@@ -1,0 +1,25 @@
+{
+  "schema": "mosaic-coverage-policy-v1",
+  "scope": {
+    "include": [
+      "rtl/*.sv",
+      "verif/coverage/*.sv"
+    ]
+  },
+  "thresholds": {
+    "line": 90,
+    "branch": 90,
+    "toggle": 90,
+    "user": 100
+  },
+  "coverpoints": [
+    {"name": "enabled_operation", "minimum_hits": 1},
+    {"name": "disabled_operation", "minimum_hits": 1},
+    {"name": "representative_data", "minimum_hits": 1},
+    {"name": "representative_output", "minimum_hits": 1}
+  ],
+  "exclusions": [],
+  "formal": {
+    "required": true
+  }
+}

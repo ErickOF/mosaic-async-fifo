@@ -1,0 +1,8 @@
+`verilator_config
+
+// Keep this file empty unless a warning is understood and explicitly accepted.
+// Every entry must also be documented in docs/waivers.md.
+//
+// Scope waivers as narrowly as possible. Examples:
+// lint_off -rule UNUSEDPARAM -file "rtl/example.sv" -lines 10-10
+// lint_off -rule WIDTH -file "rtl/example.sv" -match "*specific message text*"

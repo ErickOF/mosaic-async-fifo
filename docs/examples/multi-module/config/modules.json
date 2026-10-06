@@ -1,0 +1,7 @@
+{
+  "schema": "mosaic-modules-v1",
+  "include": [
+    {"name": "counter", "artifact_suffix": "native"},
+    {"name": "fifo", "artifact_suffix": "native"}
+  ]
+}

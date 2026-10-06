@@ -1,0 +1,11 @@
+[gold]
+read_verilog -sv rtl/mosaic_module.sv
+prep -top mosaic_module
+
+[gate]
+read_verilog work/yosys_synthesis/mosaic_module_netlist.v
+prep -top mosaic_module
+
+[strategy sat]
+use sat
+depth 8

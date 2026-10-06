@@ -1,0 +1,220 @@
+{
+  "schema": "mosaic-qualification-campaigns-v1",
+  "campaigns": {
+    "negative": {
+      "inputs": [
+        "config/qualification-equivalent.eqy",
+        "config/qualification-inequivalent.eqy",
+        "rtl/mosaic_module.sv",
+        "verif/mutations/mosaic_module_bad_netlist.v",
+        "verif/tb/mosaic_module_tb.sv"
+      ],
+      "cases": [
+        {
+          "id": "simulation_positive_control",
+          "evidence": "simulation_positive_control",
+          "role": "positive_control",
+          "kind": "positive_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{verilator}",
+                "--binary",
+                "--timing",
+                "--assert",
+                "-Wall",
+                "-Wno-BLKSEQ",
+                "-Wno-SYNCASYNCNET",
+                "--top-module",
+                "mosaic_module_tb",
+                "--Mdir",
+                "{case_work_dir}/obj_dir",
+                "rtl/mosaic_module.sv",
+                "verif/tb/mosaic_module_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": ["{case_work_dir}/obj_dir/Vmosaic_module_tb"],
+              "expected": "success",
+              "diagnostic": "MOSAIC_MODULE_TEST_PASS"
+            }
+          ]
+        },
+        {
+          "id": "equivalence_positive_control",
+          "evidence": "equivalence_positive_control",
+          "role": "positive_control",
+          "kind": "equivalence_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{eqy}",
+                "-f",
+                "-d",
+                "{case_work_dir}/eqy",
+                "config/qualification-equivalent.eqy"
+              ],
+              "expected": "success",
+              "diagnostic": "Successfully proved designs equivalent"
+            }
+          ]
+        },
+        {
+          "id": "detected_capture_mutation",
+          "evidence": "detected_capture_mutation",
+          "role": "negative",
+          "kind": "simulation_mutation",
+          "positive_control": "simulation_positive_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{verilator}",
+                "--binary",
+                "--timing",
+                "--assert",
+                "-Wall",
+                "-Wno-BLKSEQ",
+                "-Wno-DECLFILENAME",
+                "-Wno-SYNCASYNCNET",
+                "--top-module",
+                "mosaic_module_tb",
+                "--Mdir",
+                "{case_work_dir}/obj_dir",
+                "verif/mutations/mosaic_module_bad_netlist.v",
+                "verif/tb/mosaic_module_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": ["{case_work_dir}/obj_dir/Vmosaic_module_tb"],
+              "expected": "failure",
+              "diagnostic": "Unexpected output",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "invalid_width_elaboration",
+          "evidence": "invalid_width_elaboration",
+          "role": "negative",
+          "kind": "invalid_parameter",
+          "positive_control": "simulation_positive_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{verilator}",
+                "--lint-only",
+                "-Wall",
+                "-GDATA_WIDTH=0",
+                "--top-module",
+                "mosaic_module",
+                "rtl/mosaic_module.sv"
+              ],
+              "expected": "failure",
+              "diagnostic": "ASCRANGE|Ascending bit range vector",
+              "failure_class": "elaboration"
+            }
+          ]
+        },
+        {
+          "id": "expected_equivalence_mismatch",
+          "evidence": "expected_equivalence_mismatch",
+          "role": "negative",
+          "kind": "equivalence_mismatch",
+          "positive_control": "equivalence_positive_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{eqy}",
+                "-f",
+                "-d",
+                "{case_work_dir}/eqy",
+                "config/qualification-inequivalent.eqy"
+              ],
+              "expected": "failure",
+              "diagnostic": "Successfully proved designs inequivalent|Failed to prove equivalence",
+              "failure_class": "equivalence"
+            }
+          ]
+        }
+      ]
+    },
+    "four_state": {
+      "simulator": "iverilog",
+      "inputs": ["verif/tb/mosaic_module_four_state_tb.sv"],
+      "cases": [
+        {
+          "id": "disabled_monitor_control",
+          "evidence": "disabled_monitor_control",
+          "role": "disabled_monitor_control",
+          "kind": "stimulus_control",
+          "injections": [
+            {"control": "enable_i", "values": ["X", "Z"]}
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-s",
+                "mosaic_module_four_state_tb",
+                "-DMOSAIC_MODULE_DISABLE_UNKNOWN_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "verif/tb/mosaic_module_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": ["{vvp}", "{case_work_dir}/simulation.vvp"],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_ENABLE_STIMULUS_REACHED"
+            }
+          ]
+        },
+        {
+          "id": "unknown_enable_detection",
+          "evidence": "unknown_enable_detection",
+          "role": "unknown_detection",
+          "kind": "control_unknown",
+          "monitor_control": "disabled_monitor_control",
+          "injections": [
+            {"control": "enable_i", "values": ["X", "Z"]}
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-s",
+                "mosaic_module_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "verif/tb/mosaic_module_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": ["{vvp}", "{case_work_dir}/simulation.vvp"],
+              "expected": "failure",
+              "diagnostic": "UNKNOWN_ENABLE_XZ_DETECTED",
+              "failure_class": "unknown_control"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

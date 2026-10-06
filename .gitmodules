@@ -1,0 +1,3 @@
+[submodule "mosaic-flow"]
+	path = mosaic-flow
+	url = https://github.com/ECASLab/mosaic-flow.git

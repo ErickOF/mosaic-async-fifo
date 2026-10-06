@@ -1,0 +1,12 @@
+.git
+.github
+mosaic-flow
+reports
+work
+*.ddc
+*.fsdb
+*.log
+*.saif
+*.vcd
+*.vpd
+*.wlf

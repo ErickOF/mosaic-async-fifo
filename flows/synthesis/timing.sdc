@@ -1,0 +1,5 @@
+create_clock -name clk_i -period 10.000 [get_ports clk_i]
+set_clock_uncertainty 0.100 [get_clocks clk_i]
+set_input_delay 0.500 -clock clk_i [get_ports {enable_i data_i}]
+set_output_delay 0.500 -clock clk_i [all_outputs]
+set_false_path -from [get_ports rst_ni]

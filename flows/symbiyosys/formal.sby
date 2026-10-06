@@ -1,0 +1,18 @@
+[options]
+mode prove
+depth 8
+
+[engines]
+smtbmc bitwuzla
+
+[script]
+read -formal -D MOSAIC_FORMAL -D MOSAIC_YOSYS_FORMAL -D FORMAL_ASSERTIONS -sv mosaic_module.sv mosaic_module_sva.sv mosaic_module_bind.sv mosaic_module_formal.sv
+prep -top mosaic_module_formal
+
+[files]
+rtl/mosaic_module.sv
+verif/properties/mosaic_module_sequences.svh
+verif/properties/mosaic_module_properties.svh
+verif/assertions/mosaic_module_sva.sv
+verif/assertions/mosaic_module_bind.sv
+verif/formal/mosaic_module_formal.sv

@@ -1,0 +1,64 @@
+{
+  "schema": "mosaic-static-intent-v1",
+  "sdc": {
+    "profiles": [
+      {
+        "name": "synthesis",
+        "path": "flows/synthesis/timing.sdc",
+        "kind": "sequential",
+        "expected_ports": {
+          "clock": ["clk_i"],
+          "input_delay": ["enable_i", "data_i"],
+          "output_delay": ["data_o"]
+        },
+        "clocks": [
+          {"name": "clk_i", "period": 10.0, "port": "clk_i"}
+        ],
+        "intentional_exceptions": [
+          {"command": "set_false_path", "from_ports": ["rst_ni"], "to_ports": []}
+        ]
+      },
+      {
+        "name": "physical",
+        "path": "flows/openroad/timing.sdc",
+        "kind": "sequential",
+        "expected_ports": {
+          "clock": ["clk_i"],
+          "input_delay": ["enable_i", "data_i"],
+          "output_delay": ["data_o"]
+        },
+        "clocks": [
+          {"name": "clk_i", "period": 10.0, "port": "clk_i"}
+        ],
+        "intentional_exceptions": [
+          {"command": "set_false_path", "from_ports": ["rst_ni"], "to_ports": []}
+        ]
+      }
+    ],
+    "consistency": [
+      {
+        "profiles": ["synthesis", "physical"],
+        "commands": [
+          "create_clock",
+          "set_clock_uncertainty",
+          "set_input_delay",
+          "set_output_delay",
+          "set_false_path"
+        ]
+      }
+    ]
+  },
+  "upf": {
+    "path": "flows/vc_lp/power.upf",
+    "top": "mosaic_module",
+    "mode": "always_on",
+    "required": {
+      "power_domains": ["PD_MOSAIC_MODULE"],
+      "supply_ports": ["VDD", "VSS"],
+      "supply_nets": ["VDD", "VSS"],
+      "supply_connections": ["VDD", "VSS"],
+      "domain_supplies": ["PD_MOSAIC_MODULE"]
+    },
+    "forbidden_strategies": []
+  }
+}

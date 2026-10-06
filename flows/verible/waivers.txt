@@ -1,0 +1,1 @@
+# One reviewed Verible waiver per line. Keep this file empty by default.

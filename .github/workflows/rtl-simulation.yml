@@ -1,0 +1,371 @@
+name: Open-source RTL quality gate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLOW_ROOT: ${{ github.workspace }}/mosaic-flow
+  MOSAIC_FLOW_RELEASE: MF20260910V1
+  MOSAIC_FLOW_RELEASE_REVISION: 0bd222f827afd802944d5f7e6ebc2ccc3a96f7ea
+
+jobs:
+  rtl-checks:
+    name: Open-source RTL checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out module repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Initialize native diagnostics
+        if: always()
+        run: |
+          mkdir -p ci-artifacts
+          {
+            echo "module_revision=${GITHUB_SHA}"
+            echo "runner=${RUNNER_OS}/${RUNNER_ARCH}"
+          } > ci-artifacts/native-context.txt
+
+      - name: Read pinned mosaic-flow submodule revision
+        id: flow-revision
+        run: |
+          revision="$(git ls-files --stage mosaic-flow | awk '$1 == "160000" {print $2}')"
+          if [[ ! "${revision}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "mosaic-flow must be a pinned Git submodule" >&2
+            exit 1
+          fi
+          if [[ "${revision}" != "${MOSAIC_FLOW_RELEASE_REVISION}" ]]; then
+            echo "mosaic-flow gitlink must resolve to ${MOSAIC_FLOW_RELEASE}" >&2
+            exit 1
+          fi
+          echo "mosaic_flow_revision=${revision}" >> ci-artifacts/native-context.txt
+          echo "revision=${revision}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check out pinned mosaic-flow
+        uses: actions/checkout@v7
+        with:
+          repository: ECASLab/mosaic-flow
+          ref: ${{ steps.flow-revision.outputs.revision }}
+          path: mosaic-flow
+          persist-credentials: false
+
+      - name: Verify mosaic-flow checkout
+        run: |
+          checked_out_revision="$(git -C mosaic-flow rev-parse HEAD)"
+          expected_revision="${{ steps.flow-revision.outputs.revision }}"
+          if [[ "${checked_out_revision}" != "${expected_revision}" ]]; then
+            echo "mosaic-flow checkout ${checked_out_revision} does not match gitlink ${expected_revision}" >&2
+            exit 1
+          fi
+          test -z "$(git -C mosaic-flow status --porcelain)"
+
+      - name: Validate project flow selection
+        run: make flow-config-check
+
+      - name: Cache open-source tools
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/mosaic
+          key: mosaic-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mosaic-flow/VERSION', 'mosaic-flow/config/tool-versions.env', 'mosaic-flow/config/pyuvm-requirements.txt') }}
+
+      - name: Set up pinned open-source tools
+        run: make setup-open-source
+
+      - name: Export pinned open-source tool paths
+        run: |
+          # shellcheck disable=SC2016
+          make --no-print-directory --silent \
+            --eval='mosaic-export-tool-paths: ; @printf "%s\n" "$(PYUVM_ROOT)/bin" "$(VERIBLE_ROOT)/bin" "$(SLANG_ROOT)/bin" "$(OSS_CAD_SUITE_ROOT)/bin"' \
+            mosaic-export-tool-paths >> "${GITHUB_PATH}"
+
+      - name: Record tool versions
+        run: |
+          set -o pipefail
+          mkdir -p reports/tool_versions
+          {
+            verilator --version
+            yosys --version
+            sby --version
+            eqy --version
+            verible-verilog-lint --version
+            slang --version
+            python --version
+            python -c 'import cocotb, pyuvm; print(f"cocotb {cocotb.__version__}"); print(f"pyuvm {pyuvm.__version__}")'
+          } | tee reports/tool_versions/versions.log
+
+      - name: Run portable open-source RTL flow
+        run: |
+          set -o pipefail
+          make open-source 2>&1 | tee ci-artifacts/native-flow.log
+
+      - name: Validate native PyUVM evidence
+        run: ./.github/scripts/check-pyuvm-evidence.sh
+
+      - name: Validate portable qualification failure controls
+        run: ./.github/scripts/check-qualification-controls.sh
+
+      - name: Validate manifests and parameter profiles
+        run: ./.github/scripts/check-profile-evidence.sh
+
+      - name: Generate native release evidence
+        run: |
+          make \
+            MODULE_REVISION="${GITHUB_SHA}" \
+            METHODOLOGY_REVISION="${{ steps.flow-revision.outputs.revision }}" \
+            RELEASE_EXECUTION_CONTEXT=native \
+            release-manifest release-manifest-validate
+
+      - name: Verify native source cleanliness
+        run: |
+          test -z "$(git status --porcelain --untracked-files=normal)"
+          test -z "$(git -C mosaic-flow status --porcelain)"
+
+      - name: Upload RTL reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: open-source-rtl-reports
+          path: |
+            reports/
+            ci-artifacts/
+          if-no-files-found: error
+
+  container-checks:
+    name: Containerized open-source RTL checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out module repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Initialize container diagnostics
+        if: always()
+        run: |
+          mkdir -p ci-artifacts
+          {
+            echo "module_revision=${GITHUB_SHA}"
+            echo "runner=${RUNNER_OS}/${RUNNER_ARCH}"
+          } > ci-artifacts/container-context.txt
+
+      - name: Read pinned mosaic-flow submodule revision
+        id: flow-revision
+        run: |
+          revision="$(git ls-files --stage mosaic-flow | awk '$1 == "160000" {print $2}')"
+          if [[ ! "${revision}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "mosaic-flow must be a pinned Git submodule" >&2
+            exit 1
+          fi
+          if [[ "${revision}" != "${MOSAIC_FLOW_RELEASE_REVISION}" ]]; then
+            echo "mosaic-flow gitlink must resolve to ${MOSAIC_FLOW_RELEASE}" >&2
+            exit 1
+          fi
+          echo "mosaic_flow_revision=${revision}" >> ci-artifacts/container-context.txt
+          echo "revision=${revision}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check out pinned mosaic-flow
+        uses: actions/checkout@v7
+        with:
+          repository: ECASLab/mosaic-flow
+          ref: ${{ steps.flow-revision.outputs.revision }}
+          path: mosaic-flow
+          persist-credentials: false
+
+      - name: Verify mosaic-flow checkout
+        run: |
+          checked_out_revision="$(git -C mosaic-flow rev-parse HEAD)"
+          expected_revision="${{ steps.flow-revision.outputs.revision }}"
+          if [[ "${checked_out_revision}" != "${expected_revision}" ]]; then
+            echo "mosaic-flow checkout ${checked_out_revision} does not match gitlink ${expected_revision}" >&2
+            exit 1
+          fi
+          test -z "$(git -C mosaic-flow status --porcelain)"
+
+      - name: Validate project flow selection
+        run: make flow-config-check
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build container image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          build-contexts: |
+            mosaic-flow=./mosaic-flow
+          build-args: |
+            MOSAIC_FLOW_REVISION=${{ steps.flow-revision.outputs.revision }}
+          cache-from: type=gha,scope=mosaic-module-ci
+          cache-to: type=gha,mode=max,scope=mosaic-module-ci
+          load: true
+          platforms: linux/amd64
+          push: false
+          tags: mosaic-module-ci:${{ github.sha }}
+
+      - name: Run portable flow in container
+        run: |
+          set -o pipefail
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --env HOME=/tmp \
+            --volume "${GITHUB_WORKSPACE}:/workspace" \
+            "mosaic-module-ci:${GITHUB_SHA}" clean open-source \
+            2>&1 | tee ci-artifacts/container-flow.log
+
+      - name: Validate container PyUVM evidence
+        run: ./.github/scripts/check-pyuvm-evidence.sh
+
+      - name: Validate container qualification controls and release evidence
+        run: |
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --env HOME=/tmp \
+            --env MODULE_REVISION="${GITHUB_SHA}" \
+            --env METHODOLOGY_REVISION="${{ steps.flow-revision.outputs.revision }}" \
+            --volume "${GITHUB_WORKSPACE}:/workspace" \
+            --entrypoint bash \
+            "mosaic-module-ci:${GITHUB_SHA}" \
+            -lc './.github/scripts/check-qualification-controls.sh && \
+              make MODULE_REVISION="${MODULE_REVISION}" \
+                METHODOLOGY_REVISION="${METHODOLOGY_REVISION}" \
+                RELEASE_METHODOLOGY_DIRTY=false \
+                RELEASE_EXECUTION_CONTEXT=container \
+                release-manifest release-manifest-validate'
+
+      - name: Verify container source cleanliness and ownership
+        run: |
+          test -z "$(git status --porcelain --untracked-files=normal)"
+          test -z "$(git -C mosaic-flow status --porcelain)"
+          if find reports work -not -user "$(id -un)" -print -quit | grep -q .; then
+            echo "Containerized checks produced files owned by another user" >&2
+            exit 1
+          fi
+
+      - name: Upload container RTL reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: container-open-source-rtl-reports
+          path: |
+            reports/
+            ci-artifacts/
+          if-no-files-found: error
+
+  openroad-checks:
+    name: Containerized Nangate45 implementation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out module repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read pinned mosaic-flow submodule revision
+        id: flow-revision
+        run: |
+          revision="$(git ls-files --stage mosaic-flow | awk '$1 == "160000" {print $2}')"
+          test "${revision}" = "${MOSAIC_FLOW_RELEASE_REVISION}"
+          echo "revision=${revision}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check out pinned mosaic-flow
+        uses: actions/checkout@v7
+        with:
+          repository: ECASLab/mosaic-flow
+          ref: ${{ steps.flow-revision.outputs.revision }}
+          path: mosaic-flow
+          persist-credentials: false
+
+      - name: Verify mosaic-flow checkout
+        run: |
+          test "$(git -C mosaic-flow rev-parse HEAD)" = \
+            "${{ steps.flow-revision.outputs.revision }}"
+          test -z "$(git -C mosaic-flow status --porcelain)"
+
+      - name: Cache pinned OpenROAD image
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/mosaic/openroad-images
+          key: openroad-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mosaic-flow/config/tool-versions.env') }}
+
+      - name: Prepare pinned OpenROAD image
+        run: mosaic-flow/ci/cache_openroad_image.sh
+
+      - name: Run Nangate45 implementation
+        run: |
+          make \
+            FLOW_openroad=enabled \
+            OPENROAD_EXECUTION_MODE=container \
+            open-physical
+
+      - name: Validate physical evidence and ownership
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          evidence = json.loads(
+              Path("reports/openroad/evidence.json").read_text(encoding="utf-8")
+          )
+          assert evidence["status"] == "PASS", evidence
+          assert evidence["design"]["platform"] == "nangate45", evidence
+          assert evidence["execution"]["mode"] == "container", evidence
+          image = evidence["execution"]["image"]
+          assert image["reference"].endswith("@" + image["digest"]), image
+          assert {item["name"] for item in evidence["artifacts"]} == {
+              "final_def",
+              "final_gds",
+              "final_netlist",
+              "final_odb",
+              "final_sdc",
+          }
+          assert all(item["bytes"] > 0 for item in evidence["artifacts"])
+          assert all(item["passed"] for item in evidence["metrics"])
+          PY
+          if find reports/openroad work/openroad \
+            -not -user "$(id -un)" -print -quit | grep -q .; then
+            echo "OpenROAD produced files owned by another user" >&2
+            exit 1
+          fi
+
+      - name: Index physical release evidence
+        run: |
+          make \
+            FLOW_openroad=enabled \
+            DISABLED_FLOWS="verible_lint verible_format slang_elaboration verilator_lint yosys_synthesis symbiyosys_formal eqy_equivalence verilator_sim pyuvm_open_source coverage_qualification negative_qualification four_state_qualification static_intent vcs_sim pyuvm_commercial vc_lint vc_cdc sg_cdc sg_dft vc_lp synopsys_synthesis synopsys_primetime synopsys_primepower" \
+            MODULE_REVISION="${GITHUB_SHA}" \
+            METHODOLOGY_REVISION="${{ steps.flow-revision.outputs.revision }}" \
+            RELEASE_EXECUTION_CONTEXT=openroad_container \
+            RELEASE_TECHNOLOGY=nangate45 \
+            release-manifest release-manifest-validate
+          grep -Fq 'reports/openroad/evidence.json' \
+            reports/release_manifest/openroad_container/manifest.json
+
+      - name: Verify physical source cleanliness
+        run: |
+          test -z "$(git status --porcelain --untracked-files=normal)"
+          test -z "$(git -C mosaic-flow status --porcelain)"
+
+      - name: Upload physical implementation evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: openroad-nangate45-reports
+          path: |
+            reports/openroad/
+            reports/release_manifest/openroad_container/
+            work/openroad/results/
+            work/openroad/reports/
+            work/openroad/logs/
+          if-no-files-found: error

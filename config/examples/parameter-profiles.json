@@ -1,0 +1,53 @@
+{
+  "schema": "mosaic-parameter-profiles-v1",
+  "include": [
+    {
+      "name": "width_min",
+      "parameters": {"DATA_WIDTH": 1},
+      "flows": [
+        "verible_lint",
+        "verible_format",
+        "slang_elaboration",
+        "verilator_lint",
+        "yosys_synthesis",
+        "symbiyosys_formal",
+        "eqy_equivalence",
+        "verilator_sim",
+        "pyuvm_open_source",
+        "static_intent"
+      ]
+    },
+    {
+      "name": "nominal",
+      "parameters": {"DATA_WIDTH": 32},
+      "flows": [
+        "verible_lint",
+        "verible_format",
+        "slang_elaboration",
+        "verilator_lint",
+        "yosys_synthesis",
+        "symbiyosys_formal",
+        "eqy_equivalence",
+        "verilator_sim",
+        "pyuvm_open_source",
+        "static_intent"
+      ]
+    },
+    {
+      "name": "width_wide",
+      "parameters": {"DATA_WIDTH": 64},
+      "flows": [
+        "verible_lint",
+        "verible_format",
+        "slang_elaboration",
+        "verilator_lint",
+        "yosys_synthesis",
+        "symbiyosys_formal",
+        "eqy_equivalence",
+        "verilator_sim",
+        "pyuvm_open_source",
+        "static_intent"
+      ]
+    }
+  ]
+}
