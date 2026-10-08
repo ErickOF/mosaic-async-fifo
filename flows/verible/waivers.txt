@@ -1,1 +1,2 @@
 # One reviewed Verible waiver per line. Keep this file empty by default.
+waive --rule=parameter-name-style --location="^rtl/async_fifo[.]sv$" --regex=".*localparam.*"

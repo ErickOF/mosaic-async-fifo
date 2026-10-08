@@ -3,161 +3,702 @@
   "campaigns": {
     "negative": {
       "inputs": [
-        "config/qualification-equivalent.eqy",
-        "config/qualification-inequivalent.eqy",
-        "rtl/mosaic_module.sv",
-        "verif/mutations/mosaic_module_bad_netlist.v",
-        "verif/tb/mosaic_module_tb.sv"
+        "filelists/rtl.f",
+        "submodules/mosaic-common/rtl/dff.sv",
+        "submodules/mosaic-common/rtl/counter.sv",
+        "rtl/async_fifo.sv",
+        "verif/assertions/async_fifo_sva.sv",
+        "verif/properties/async_fifo_predicates.svh",
+        "verif/tb/async_fifo_four_state_tb.sv",
+        "filelists/fault_tb.f",
+        "filelists/properties.f",
+        "filelists/assertions.f",
+        "filelists/coverage.f",
+        "verif/tb/async_fifo_fault_tb.sv",
+        "verif/assertions/async_fifo_sim_checker.sv",
+        "verif/assertions/async_fifo_bind.sv",
+        "verif/coverage/async_fifo_coverage.sv",
+        "verif/coverage/async_fifo_coverage_bind.sv",
+        "verif/coverage/async_fifo_state_covergroups.svh",
+        "verif/coverage/async_fifo_sim_coverage.sv",
+        "verif/coverage/async_fifo_timing_coverage.sv",
+        ".github/scripts/check-cross-coverage.py",
+        ".github/scripts/run-pyuvm-control.sh",
+        ".github/scripts/check-pyuvm-evidence.sh",
+        "verif/pyuvm/async_fifo_env.py",
+        "verif/pyuvm/test_async_fifo.py",
+        "verif/pyuvm/test_async_fifo_assertion_control.py",
+        "config/parameter-profiles.json",
+        "config/design.mk"
       ],
       "cases": [
         {
-          "id": "simulation_positive_control",
-          "evidence": "simulation_positive_control",
+          "id": "payload_control",
+          "evidence": "payload_control",
           "role": "positive_control",
-          "kind": "positive_control",
+          "kind": "payload_transport",
           "phases": [
             {
               "name": "compile",
               "command": [
-                "{verilator}",
-                "--binary",
-                "--timing",
-                "--assert",
-                "-Wall",
-                "-Wno-BLKSEQ",
-                "-Wno-SYNCASYNCNET",
-                "--top-module",
-                "mosaic_module_tb",
-                "--Mdir",
-                "{case_work_dir}/obj_dir",
-                "rtl/mosaic_module.sv",
-                "verif/tb/mosaic_module_tb.sv"
-              ],
-              "expected": "success"
-            },
-            {
-              "name": "run",
-              "command": ["{case_work_dir}/obj_dir/Vmosaic_module_tb"],
-              "expected": "success",
-              "diagnostic": "MOSAIC_MODULE_TEST_PASS"
-            }
-          ]
-        },
-        {
-          "id": "equivalence_positive_control",
-          "evidence": "equivalence_positive_control",
-          "role": "positive_control",
-          "kind": "equivalence_control",
-          "phases": [
-            {
-              "name": "run",
-              "command": [
-                "{eqy}",
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
                 "-f",
-                "-d",
-                "{case_work_dir}/eqy",
-                "config/qualification-equivalent.eqy"
-              ],
-              "expected": "success",
-              "diagnostic": "Successfully proved designs equivalent"
-            }
-          ]
-        },
-        {
-          "id": "detected_capture_mutation",
-          "evidence": "detected_capture_mutation",
-          "role": "negative",
-          "kind": "simulation_mutation",
-          "positive_control": "simulation_positive_control",
-          "phases": [
-            {
-              "name": "compile",
-              "command": [
-                "{verilator}",
-                "--binary",
-                "--timing",
-                "--assert",
-                "-Wall",
-                "-Wno-BLKSEQ",
-                "-Wno-DECLFILENAME",
-                "-Wno-SYNCASYNCNET",
-                "--top-module",
-                "mosaic_module_tb",
-                "--Mdir",
-                "{case_work_dir}/obj_dir",
-                "verif/mutations/mosaic_module_bad_netlist.v",
-                "verif/tb/mosaic_module_tb.sv"
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
               ],
               "expected": "success"
             },
             {
               "name": "run",
-              "command": ["{case_work_dir}/obj_dir/Vmosaic_module_tb"],
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp"
+              ],
+              "expected": "success",
+              "diagnostic": "FOUR_STATE_PAYLOAD_PASS"
+            }
+          ]
+        },
+        {
+          "id": "zero_width",
+          "evidence": "zero_width",
+          "role": "negative",
+          "kind": "invalid_parameter",
+          "positive_control": "payload_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-Pasync_fifo_four_state_tb.DATA_WIDTH=0",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp"
+              ],
               "expected": "failure",
-              "diagnostic": "Unexpected output",
+              "diagnostic": "(?m)^FATAL: [^\\n]*async_fifo: invalid parameters\\n[ \\t]+Time: 0[ \\t]+Scope: [^\\n]*g_invalid_parameters[ \\t]*$",
               "failure_class": "assertion"
             }
           ]
         },
         {
-          "id": "invalid_width_elaboration",
-          "evidence": "invalid_width_elaboration",
+          "id": "too_shallow",
+          "evidence": "too_shallow",
           "role": "negative",
           "kind": "invalid_parameter",
-          "positive_control": "simulation_positive_control",
+          "positive_control": "payload_control",
           "phases": [
             {
               "name": "compile",
               "command": [
-                "{verilator}",
-                "--lint-only",
-                "-Wall",
-                "-GDATA_WIDTH=0",
-                "--top-module",
-                "mosaic_module",
-                "rtl/mosaic_module.sv"
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-Pasync_fifo_four_state_tb.DEPTH=1",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp"
               ],
               "expected": "failure",
-              "diagnostic": "ASCRANGE|Ascending bit range vector",
-              "failure_class": "elaboration"
+              "diagnostic": "(?m)^FATAL: [^\\n]*async_fifo: invalid parameters\\n[ \\t]+Time: 0[ \\t]+Scope: [^\\n]*g_invalid_parameters[ \\t]*$",
+              "failure_class": "assertion"
             }
           ]
         },
         {
-          "id": "expected_equivalence_mismatch",
-          "evidence": "expected_equivalence_mismatch",
+          "id": "non_power_of_two",
+          "evidence": "non_power_of_two",
           "role": "negative",
-          "kind": "equivalence_mismatch",
-          "positive_control": "equivalence_positive_control",
+          "kind": "invalid_parameter",
+          "positive_control": "payload_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-Pasync_fifo_four_state_tb.DEPTH=3",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?m)^FATAL: [^\\n]*async_fifo: invalid parameters\\n[ \\t]+Time: 0[ \\t]+Scope: [^\\n]*g_invalid_parameters[ \\t]*$",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "one_stage",
+          "evidence": "one_stage",
+          "role": "negative",
+          "kind": "invalid_parameter",
+          "positive_control": "payload_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-Pasync_fifo_four_state_tb.SYNC_STAGES=1",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?m)^FATAL: [^\\n]*async_fifo: invalid parameters\\n[ \\t]+Time: 0[ \\t]+Scope: [^\\n]*g_invalid_parameters[ \\t]*$",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "full_threshold_zero",
+          "evidence": "full_threshold_zero",
+          "role": "negative",
+          "kind": "invalid_parameter",
+          "positive_control": "payload_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-Pasync_fifo_four_state_tb.ALMOST_FULL_LEVEL=0",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?m)^FATAL: [^\\n]*async_fifo: invalid parameters\\n[ \\t]+Time: 0[ \\t]+Scope: [^\\n]*g_invalid_parameters[ \\t]*$",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "full_threshold_high",
+          "evidence": "full_threshold_high",
+          "role": "negative",
+          "kind": "invalid_parameter",
+          "positive_control": "payload_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-Pasync_fifo_four_state_tb.ALMOST_FULL_LEVEL=5",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?m)^FATAL: [^\\n]*async_fifo: invalid parameters\\n[ \\t]+Time: 0[ \\t]+Scope: [^\\n]*g_invalid_parameters[ \\t]*$",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "empty_threshold_high",
+          "evidence": "empty_threshold_high",
+          "role": "negative",
+          "kind": "invalid_parameter",
+          "positive_control": "payload_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-Pasync_fifo_four_state_tb.ALMOST_EMPTY_LEVEL=4",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?m)^FATAL: [^\\n]*async_fifo: invalid parameters\\n[ \\t]+Time: 0[ \\t]+Scope: [^\\n]*g_invalid_parameters[ \\t]*$",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "output_corruption",
+          "evidence": "output_corruption",
+          "role": "negative",
+          "kind": "simulation_mutation",
+          "positive_control": "payload_control",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CORRUPT_OUTPUT"
+              ],
+              "expected": "failure",
+              "diagnostic": "unknown payload was corrupted",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "rtl_fault_control",
+          "evidence": "rtl_fault_control",
+          "role": "positive_control",
+          "kind": "rtl_fault_baseline",
           "phases": [
             {
               "name": "run",
               "command": [
-                "{eqy}",
-                "-f",
-                "-d",
-                "{case_work_dir}/eqy",
-                "config/qualification-inequivalent.eqy"
+                "make",
+                "--no-print-directory",
+                "PROFILE=minimum",
+                "DISABLED_FLOWS=",
+                "open-sim",
+                "TB_TOP=async_fifo_fault_tb",
+                "TB_FILELIST={module_root}/filelists/fault_tb.f",
+                "REPORT_DIR={case_report_dir}/reports",
+                "WORK_DIR={case_work_dir}/work"
+              ],
+              "expected": "success",
+              "diagnostic": "FAULT_BASELINE_PASS records=4",
+              "timeout_seconds": 600
+            }
+          ]
+        },
+        {
+          "id": "write_pointer_stage0",
+          "evidence": "write_pointer_stage0",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=write_pointer_stage0"
               ],
               "expected": "failure",
-              "diagnostic": "Successfully proved designs inequivalent|Failed to prove equivalence",
-              "failure_class": "equivalence"
+              "diagnostic": "(?s)INJECTED_RTL_FAULT write_pointer_stage0.*FAULT_DETECTED write_pointer_stage0 write capacity",
+              "failure_class": "mutation"
+            }
+          ]
+        },
+        {
+          "id": "write_pointer_final",
+          "evidence": "write_pointer_final",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=write_pointer_final"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT write_pointer_final.*FAULT_DETECTED write_pointer_final write capacity",
+              "failure_class": "mutation"
+            }
+          ]
+        },
+        {
+          "id": "read_pointer_stage0",
+          "evidence": "read_pointer_stage0",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=read_pointer_stage0"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT read_pointer_stage0.*FAULT_DETECTED read_pointer_stage0 read visibility",
+              "failure_class": "mutation"
+            }
+          ]
+        },
+        {
+          "id": "read_pointer_final",
+          "evidence": "read_pointer_final",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=read_pointer_final"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT read_pointer_final.*FAULT_DETECTED read_pointer_final read visibility",
+              "failure_class": "mutation"
+            }
+          ]
+        },
+        {
+          "id": "write_up_stage0",
+          "evidence": "write_up_stage0",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=write_up_stage0"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT write_up_stage0.*FAULT_DETECTED write_up_stage0 initialization",
+              "failure_class": "mutation"
+            }
+          ]
+        },
+        {
+          "id": "write_up_final",
+          "evidence": "write_up_final",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=write_up_final"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT write_up_final.*FAULT_DETECTED write_up_final initialization",
+              "failure_class": "mutation"
+            }
+          ]
+        },
+        {
+          "id": "read_up_stage0",
+          "evidence": "read_up_stage0",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=read_up_stage0"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT read_up_stage0.*FAULT_DETECTED read_up_stage0 initialization",
+              "failure_class": "mutation"
+            }
+          ]
+        },
+        {
+          "id": "read_up_final",
+          "evidence": "read_up_final",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=read_up_final"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT read_up_final.*FAULT_DETECTED read_up_final initialization",
+              "failure_class": "mutation"
+            }
+          ]
+        },
+        {
+          "id": "full_flag",
+          "evidence": "full_flag",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=full_flag"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT full_flag.*Assertion failed in async_fifo_fault_tb\\.dut\\.u_checker\\.u_behavior\\.write_full_prediction:",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "empty_flag",
+          "evidence": "empty_flag",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=empty_flag"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT empty_flag.*Assertion failed in async_fifo_fault_tb\\.dut\\.u_checker\\.u_behavior\\.read_empty_prediction:",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "memory_hold",
+          "evidence": "memory_hold",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=memory_hold"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT memory_hold.*Assertion failed in async_fifo_fault_tb\\.dut\\.u_checker\\.u_behavior\\.g_storage\\[1\\]\\.storage_hold:",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "memory_write",
+          "evidence": "memory_write",
+          "role": "negative",
+          "kind": "rtl_state_mutation",
+          "positive_control": "rtl_fault_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "{work_dir}/rtl_fault_control/work/minimum/verilator_sim/obj_dir/Vasync_fifo_fault_tb",
+                "+FAULT=memory_write"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)INJECTED_RTL_FAULT memory_write.*Assertion failed in async_fifo_fault_tb\\.dut\\.u_checker\\.u_behavior\\.g_storage\\[0\\]\\.storage_write:",
+              "failure_class": "assertion"
+            }
+          ]
+        },
+        {
+          "id": "pyuvm_control",
+          "evidence": "pyuvm_control",
+          "role": "positive_control",
+          "kind": "pyuvm_baseline",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "bash",
+                ".github/scripts/run-pyuvm-control.sh",
+                "positive",
+                "{case_report_dir}/reports",
+                "{case_work_dir}/work"
+              ],
+              "expected": "success",
+              "diagnostic": "PYUVM_CAMPAIGN_BASELINE_PASS",
+              "timeout_seconds": 600
+            }
+          ]
+        },
+        {
+          "id": "pyuvm_input_hold",
+          "evidence": "pyuvm_input_hold",
+          "role": "negative",
+          "kind": "pyuvm_assertion_fault",
+          "positive_control": "pyuvm_control",
+          "phases": [
+            {
+              "name": "run",
+              "command": [
+                "bash",
+                ".github/scripts/run-pyuvm-control.sh",
+                "fault",
+                "{case_report_dir}/reports",
+                "{case_work_dir}/work"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)PYUVM_INPUT_HOLD_FAULT_REACHED.*Assertion failed in async_fifo\\.u_checker\\.u_behavior\\.input_hold:",
+              "failure_class": "assertion",
+              "timeout_seconds": 600
             }
           ]
         }
+      ],
+      "infrastructure_diagnostics": [
+        "RTL_FAULT_ESCAPED",
+        "FAULT_FIXTURE_TIMEOUT",
+        "PYUVM_ASSERTION_ESCAPED"
       ]
     },
     "four_state": {
       "simulator": "iverilog",
-      "inputs": ["verif/tb/mosaic_module_four_state_tb.sv"],
+      "inputs": [
+        "filelists/rtl.f",
+        "submodules/mosaic-common/rtl/dff.sv",
+        "submodules/mosaic-common/rtl/counter.sv",
+        "rtl/async_fifo.sv",
+        "verif/assertions/async_fifo_sva.sv",
+        "verif/properties/async_fifo_predicates.svh",
+        "verif/tb/async_fifo_four_state_tb.sv"
+      ],
       "cases": [
         {
-          "id": "disabled_monitor_control",
-          "evidence": "disabled_monitor_control",
+          "id": "i_w_rstb_x_monitor_off",
+          "evidence": "i_w_rstb_x_monitor_off",
           "role": "disabled_monitor_control",
-          "kind": "stimulus_control",
+          "kind": "control_unknown",
           "injections": [
-            {"control": "enable_i", "values": ["X", "Z"]}
+            {
+              "control": "i_w_rstb",
+              "values": [
+                "X"
+              ]
+            }
           ],
           "phases": [
             {
@@ -165,31 +706,92 @@
               "command": [
                 "{iverilog}",
                 "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
                 "-s",
-                "mosaic_module_four_state_tb",
-                "-DMOSAIC_MODULE_DISABLE_UNKNOWN_MONITOR",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
                 "-o",
                 "{case_work_dir}/simulation.vvp",
-                "verif/tb/mosaic_module_four_state_tb.sv"
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
               ],
               "expected": "success"
             },
             {
               "name": "run",
-              "command": ["{vvp}", "{case_work_dir}/simulation.vvp"],
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_w_rstb",
+                "+VALUE=X"
+              ],
               "expected": "success",
-              "diagnostic": "UNKNOWN_ENABLE_STIMULUS_REACHED"
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED i_w_rstb X"
             }
           ]
         },
         {
-          "id": "unknown_enable_detection",
-          "evidence": "unknown_enable_detection",
+          "id": "i_w_rstb_x_detection",
+          "evidence": "i_w_rstb_x_detection",
           "role": "unknown_detection",
           "kind": "control_unknown",
-          "monitor_control": "disabled_monitor_control",
           "injections": [
-            {"control": "enable_i", "values": ["X", "Z"]}
+            {
+              "control": "i_w_rstb",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "monitor_control": "i_w_rstb_x_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_w_rstb",
+                "+VALUE=X"
+              ],
+              "expected": "failure",
+              "diagnostic": "UNKNOWN_CONTROL_DETECTED",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "i_w_rstb_z_monitor_off",
+          "evidence": "i_w_rstb_z_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_w_rstb",
+              "values": [
+                "Z"
+              ]
+            }
           ],
           "phases": [
             {
@@ -197,23 +799,1387 @@
               "command": [
                 "{iverilog}",
                 "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
                 "-s",
-                "mosaic_module_four_state_tb",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
                 "-o",
                 "{case_work_dir}/simulation.vvp",
-                "verif/tb/mosaic_module_four_state_tb.sv"
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
               ],
               "expected": "success"
             },
             {
               "name": "run",
-              "command": ["{vvp}", "{case_work_dir}/simulation.vvp"],
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_w_rstb",
+                "+VALUE=Z"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED i_w_rstb Z"
+            }
+          ]
+        },
+        {
+          "id": "i_w_rstb_z_detection",
+          "evidence": "i_w_rstb_z_detection",
+          "role": "unknown_detection",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_w_rstb",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "monitor_control": "i_w_rstb_z_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_w_rstb",
+                "+VALUE=Z"
+              ],
               "expected": "failure",
-              "diagnostic": "UNKNOWN_ENABLE_XZ_DETECTED",
+              "diagnostic": "UNKNOWN_CONTROL_DETECTED",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "i_r_rstb_x_monitor_off",
+          "evidence": "i_r_rstb_x_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_r_rstb",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_r_rstb",
+                "+VALUE=X"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED i_r_rstb X"
+            }
+          ]
+        },
+        {
+          "id": "i_r_rstb_x_detection",
+          "evidence": "i_r_rstb_x_detection",
+          "role": "unknown_detection",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_r_rstb",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "monitor_control": "i_r_rstb_x_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_r_rstb",
+                "+VALUE=X"
+              ],
+              "expected": "failure",
+              "diagnostic": "UNKNOWN_CONTROL_DETECTED",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "i_r_rstb_z_monitor_off",
+          "evidence": "i_r_rstb_z_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_r_rstb",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_r_rstb",
+                "+VALUE=Z"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED i_r_rstb Z"
+            }
+          ]
+        },
+        {
+          "id": "i_r_rstb_z_detection",
+          "evidence": "i_r_rstb_z_detection",
+          "role": "unknown_detection",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_r_rstb",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "monitor_control": "i_r_rstb_z_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_r_rstb",
+                "+VALUE=Z"
+              ],
+              "expected": "failure",
+              "diagnostic": "UNKNOWN_CONTROL_DETECTED",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "i_w_valid_x_monitor_off",
+          "evidence": "i_w_valid_x_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_w_valid",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_w_valid",
+                "+VALUE=X"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED i_w_valid X"
+            }
+          ]
+        },
+        {
+          "id": "i_w_valid_x_detection",
+          "evidence": "i_w_valid_x_detection",
+          "role": "unknown_detection",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_w_valid",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "monitor_control": "i_w_valid_x_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_w_valid",
+                "+VALUE=X"
+              ],
+              "expected": "failure",
+              "diagnostic": "UNKNOWN_CONTROL_DETECTED",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "i_w_valid_z_monitor_off",
+          "evidence": "i_w_valid_z_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_w_valid",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_w_valid",
+                "+VALUE=Z"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED i_w_valid Z"
+            }
+          ]
+        },
+        {
+          "id": "i_w_valid_z_detection",
+          "evidence": "i_w_valid_z_detection",
+          "role": "unknown_detection",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_w_valid",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "monitor_control": "i_w_valid_z_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_w_valid",
+                "+VALUE=Z"
+              ],
+              "expected": "failure",
+              "diagnostic": "UNKNOWN_CONTROL_DETECTED",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "i_r_ready_x_monitor_off",
+          "evidence": "i_r_ready_x_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_r_ready",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_r_ready",
+                "+VALUE=X"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED i_r_ready X"
+            }
+          ]
+        },
+        {
+          "id": "i_r_ready_x_detection",
+          "evidence": "i_r_ready_x_detection",
+          "role": "unknown_detection",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_r_ready",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "monitor_control": "i_r_ready_x_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_r_ready",
+                "+VALUE=X"
+              ],
+              "expected": "failure",
+              "diagnostic": "UNKNOWN_CONTROL_DETECTED",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "i_r_ready_z_monitor_off",
+          "evidence": "i_r_ready_z_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_r_ready",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_r_ready",
+                "+VALUE=Z"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED i_r_ready Z"
+            }
+          ]
+        },
+        {
+          "id": "i_r_ready_z_detection",
+          "evidence": "i_r_ready_z_detection",
+          "role": "unknown_detection",
+          "kind": "control_unknown",
+          "injections": [
+            {
+              "control": "i_r_ready",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "monitor_control": "i_r_ready_z_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=i_r_ready",
+                "+VALUE=Z"
+              ],
+              "expected": "failure",
+              "diagnostic": "UNKNOWN_CONTROL_DETECTED",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "r_gray_final_x_monitor_off",
+          "evidence": "r_gray_final_x_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "r_gray_final",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=r_gray_final",
+                "+VALUE=X"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED r_gray_final X"
+            }
+          ]
+        },
+        {
+          "id": "r_gray_final_x_detection",
+          "evidence": "r_gray_final_x_detection",
+          "role": "unknown_detection",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "r_gray_final",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "monitor_control": "r_gray_final_x_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=r_gray_final",
+                "+VALUE=X"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)UNKNOWN_STIMULUS_REACHED r_gray_final X.*UNKNOWN_SYNCHRONIZER_DETECTED write",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "r_gray_final_z_monitor_off",
+          "evidence": "r_gray_final_z_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "r_gray_final",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=r_gray_final",
+                "+VALUE=Z"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED r_gray_final Z"
+            }
+          ]
+        },
+        {
+          "id": "r_gray_final_z_detection",
+          "evidence": "r_gray_final_z_detection",
+          "role": "unknown_detection",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "r_gray_final",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "monitor_control": "r_gray_final_z_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=r_gray_final",
+                "+VALUE=Z"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)UNKNOWN_STIMULUS_REACHED r_gray_final Z.*UNKNOWN_SYNCHRONIZER_DETECTED write",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "w_gray_final_x_monitor_off",
+          "evidence": "w_gray_final_x_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "w_gray_final",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=w_gray_final",
+                "+VALUE=X"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED w_gray_final X"
+            }
+          ]
+        },
+        {
+          "id": "w_gray_final_x_detection",
+          "evidence": "w_gray_final_x_detection",
+          "role": "unknown_detection",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "w_gray_final",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "monitor_control": "w_gray_final_x_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=w_gray_final",
+                "+VALUE=X"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)UNKNOWN_STIMULUS_REACHED w_gray_final X.*UNKNOWN_SYNCHRONIZER_DETECTED read",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "w_gray_final_z_monitor_off",
+          "evidence": "w_gray_final_z_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "w_gray_final",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=w_gray_final",
+                "+VALUE=Z"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED w_gray_final Z"
+            }
+          ]
+        },
+        {
+          "id": "w_gray_final_z_detection",
+          "evidence": "w_gray_final_z_detection",
+          "role": "unknown_detection",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "w_gray_final",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "monitor_control": "w_gray_final_z_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=w_gray_final",
+                "+VALUE=Z"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)UNKNOWN_STIMULUS_REACHED w_gray_final Z.*UNKNOWN_SYNCHRONIZER_DETECTED read",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "r_up_final_x_monitor_off",
+          "evidence": "r_up_final_x_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "r_up_final",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=r_up_final",
+                "+VALUE=X"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED r_up_final X"
+            }
+          ]
+        },
+        {
+          "id": "r_up_final_x_detection",
+          "evidence": "r_up_final_x_detection",
+          "role": "unknown_detection",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "r_up_final",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "monitor_control": "r_up_final_x_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=r_up_final",
+                "+VALUE=X"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)UNKNOWN_STIMULUS_REACHED r_up_final X.*UNKNOWN_SYNCHRONIZER_DETECTED write",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "r_up_final_z_monitor_off",
+          "evidence": "r_up_final_z_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "r_up_final",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=r_up_final",
+                "+VALUE=Z"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED r_up_final Z"
+            }
+          ]
+        },
+        {
+          "id": "r_up_final_z_detection",
+          "evidence": "r_up_final_z_detection",
+          "role": "unknown_detection",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "r_up_final",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "monitor_control": "r_up_final_z_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=r_up_final",
+                "+VALUE=Z"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)UNKNOWN_STIMULUS_REACHED r_up_final Z.*UNKNOWN_SYNCHRONIZER_DETECTED write",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "w_up_final_x_monitor_off",
+          "evidence": "w_up_final_x_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "w_up_final",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=w_up_final",
+                "+VALUE=X"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED w_up_final X"
+            }
+          ]
+        },
+        {
+          "id": "w_up_final_x_detection",
+          "evidence": "w_up_final_x_detection",
+          "role": "unknown_detection",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "w_up_final",
+              "values": [
+                "X"
+              ]
+            }
+          ],
+          "monitor_control": "w_up_final_x_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=w_up_final",
+                "+VALUE=X"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)UNKNOWN_STIMULUS_REACHED w_up_final X.*UNKNOWN_SYNCHRONIZER_DETECTED read",
+              "failure_class": "unknown_control"
+            }
+          ]
+        },
+        {
+          "id": "w_up_final_z_monitor_off",
+          "evidence": "w_up_final_z_monitor_off",
+          "role": "disabled_monitor_control",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "w_up_final",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-DFIFO_DISABLE_CONTROL_MONITOR",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=w_up_final",
+                "+VALUE=Z"
+              ],
+              "expected": "success",
+              "diagnostic": "UNKNOWN_STIMULUS_REACHED w_up_final Z"
+            }
+          ]
+        },
+        {
+          "id": "w_up_final_z_detection",
+          "evidence": "w_up_final_z_detection",
+          "role": "unknown_detection",
+          "kind": "synchronizer_unknown",
+          "injections": [
+            {
+              "control": "w_up_final",
+              "values": [
+                "Z"
+              ]
+            }
+          ],
+          "monitor_control": "w_up_final_z_monitor_off",
+          "phases": [
+            {
+              "name": "compile",
+              "command": [
+                "{iverilog}",
+                "-g2012",
+                "-DMOSAIC_FOUR_STATE",
+                "-Iverif/properties",
+                "-s",
+                "async_fifo_four_state_tb",
+                "-o",
+                "{case_work_dir}/simulation.vvp",
+                "-f",
+                "filelists/rtl.f",
+                "verif/assertions/async_fifo_sva.sv",
+                "verif/tb/async_fifo_four_state_tb.sv"
+              ],
+              "expected": "success"
+            },
+            {
+              "name": "run",
+              "command": [
+                "{vvp}",
+                "{case_work_dir}/simulation.vvp",
+                "+CONTROL=w_up_final",
+                "+VALUE=Z"
+              ],
+              "expected": "failure",
+              "diagnostic": "(?s)UNKNOWN_STIMULUS_REACHED w_up_final Z.*UNKNOWN_SYNCHRONIZER_DETECTED read",
               "failure_class": "unknown_control"
             }
           ]
         }
+      ],
+      "infrastructure_diagnostics": [
+        "UNKNOWN_MONITOR_ESCAPED",
+        "injection did not arrive",
+        "four-state test timeout"
       ]
     }
   }

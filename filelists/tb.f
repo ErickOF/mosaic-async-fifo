@@ -1,3 +1,3 @@
 -f filelists/rtl.f
 +incdir+verif
-verif/tb/mosaic_module_tb.sv
+verif/tb/async_fifo_tb.sv

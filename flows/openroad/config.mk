@@ -1,12 +1,10 @@
-export DESIGN_NAME = mosaic_module
+# Exploratory configuration only. The draft SDC blocks physical qualification.
+export DESIGN_NAME = async_fifo
 export PLATFORM = $(OPENROAD_PLATFORM)
-export VERILOG_FILES = $(REPO_ROOT)/rtl/mosaic_module.sv
-export SDC_FILE = $(REPO_ROOT)/flows/openroad/timing.sdc
-# RTL-to-netlist equivalence is qualified by the module's EQY flow. Disable the
-# optional ORFS Kepler LEC helper so the pinned physical container remains
-# portable across GitHub-hosted and local x86_64 runners.
+export VERILOG_FILES = $(MODULE_ROOT)/submodules/mosaic-common/rtl/dff.sv \
+    $(MODULE_ROOT)/submodules/mosaic-common/rtl/counter.sv \
+    $(MODULE_ROOT)/rtl/async_fifo.sv
+export SDC_FILE = $(MODULE_ROOT)/flows/openroad/timing.sdc
 export LEC_CHECK = 0
-# Keep the tiny template design large enough for the platform's default PDN
-# straps. Production modules must replace these representative dimensions.
-export DIE_AREA = 0 0 60 60
-export CORE_AREA = 5 5 55 55
+export DIE_AREA = 0 0 100 100
+export CORE_AREA = 5 5 95 95

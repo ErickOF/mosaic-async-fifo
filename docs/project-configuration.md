@@ -1,294 +1,183 @@
 # Project configuration
 
-## Configuration layers
+The root Makefile directly includes `mosaic-flow/mk/project.mk`.
+`config/design.mk` selects `async_fifo`, source lists, and module-owned inputs.
+`config/flows.mk` selects the initial portable flows. No new per-flow Makefile
+or runner is introduced.
 
-The module consumes shared defaults and then applies design-owned policy:
+## Profiles
 
-1. `mosaic-flow/mk/project.mk` selects the single-module or manifest-backed
-   project mode.
-2. `config/design.mk` defines module identity, paths, and technology inputs.
-3. `mosaic-flow/config/tools.mk` defines pinned tool locations and command
-   defaults.
-4. `mosaic-flow/config/flows.mk` defines canonical flow states and dependencies.
-5. Module `config/flows.mk` replaces shared states or dependencies.
-6. A selected parameter profile narrows flows and overrides parameters or tops.
-7. Make command-line assignments provide temporary diagnostic overrides.
+Always select `PROFILE=<name>` or run `make all-profiles PROFILE_JOBS=2`.
+The manifest at `config/parameter-profiles.json` is the source of truth.
+Profiles isolate reports, generated netlists, and work directories.
 
-The root Makefile establishes this order. Keep it free of design-specific flow
-logic.
+The pinned MF20260910V1 parameter renderer applies Yosys overrides separately
+in alphabetical order. A threshold valid only after a depth increase can fail
+during an intermediate override. The `wide_deep` profile uses derived default
+thresholds, and `threshold_edges` exercises upper boundaries at default depth.
+The RTL guard remains intact. Atomic grouped override support should be qualified
+in a future mosaic-flow release rather than patched into this submodule.
 
-## Module identity
+## Portable and licensed scopes
 
-These values must agree with the RTL and verification hierarchy:
+Verible style/format, Slang, Verilator lint/simulation, PyUVM, Yosys, EQY, and the
+negative/four-state campaigns are enabled where named by each profile.
+Within the portable matrix, multiclock formal is enabled only for `minimum`.
+The separate `config/formal-profiles.json` provides nine formal-only targets,
+using the same pinned adapter with a manifest override. See
+[formal models and commands](formal-model.md). Do not use those harness-only
+parameters with production simulation or synthesis tops.
 
-| Variable | Meaning | Template value |
-| --- | --- | --- |
-| `DESIGN_TOP` | Synthesizable top | `mosaic_module` |
-| `TB_TOP` | Simulation top | `mosaic_module_tb` |
-| `FORMAL_TOP` | Formal harness top | `mosaic_module_formal` |
-| `PYUVM_TOP` | HDL top exposed to cocotb | `mosaic_module` |
-| `PYUVM_TEST_MODULE` | Importable Python test module | `test_mosaic_module` |
-| `DUT_INSTANCE` | Hierarchical DUT for SAIF annotation | `mosaic_module_tb/dut` |
+Quantitative coverage qualification and portable static intent remain
+unqualified. The existing static-intent parser does not qualify this module's
+Gray-bus skew, mapped endpoint, and RDC requirements.
 
-`DUT_INSTANCE` uses the hierarchy syntax expected by PrimePower activity
-annotation. Confirm it against the generated SAIF hierarchy rather than assuming
-the simulation source name is sufficient.
+Licensed flows are disabled in the portable profile because tools, libraries,
+corners, and qualified site adapters are not configured. VC Lint, a selected
+CDC/RDC engine, mapped synthesis/preservation, PrimeTime, PrimePower, and MTBF
+are still mandatory release requirements. They are NOT_RUN/BLOCKED, not waived.
 
-## Paths
+DFT, VC LP, and physical scope depend on the eventual product integration.
+The draft SDC deliberately fails closed until mapped crossing endpoints and
+physical budgets are qualified. The UPF is a same-voltage always-on draft.
 
-`FLOW_CONFIG_ROOT` points to the module-owned `flows/` directory. Other exported
-paths identify:
+## PyUVM and Shared Verification
 
-- RTL, simulation, property, assertion, and coverage file lists
-- PyUVM test path, Python module, HDL top, and DUT file list
-- Verible and Verilator waiver policy
-- Formal proof, formal cover, and equivalence configuration
-- OpenROAD design configuration
-- Synthesis, CDC, DFT, and UPF intent
-- Report and work roots
+`FLOW_pyuvm_open_source=enabled` and every profile's flow list select the shared
+Verilator adapter. `make PROFILE=<name> open-source` therefore runs PyUVM in
+addition to the SystemVerilog testbench. `make PROFILE=<name> open-pyuvm` runs
+only that adapter. No new runner, per-flow Makefile, HDL wrapper, or dependency
+version is needed.
 
-Prefer absolute paths derived from `MODULE_ROOT`. Tool adapters may change their
-working directory, while the module contract should remain stable.
+`PYUVM_TOP=async_fifo` exposes the DUT ports directly. `PYUVM_TEST_MODULE=test_async_fifo`
+selects `verif/pyuvm/test_async_fifo.py`, which creates `FifoEnvironment` from
+`verif/pyuvm/async_fifo_env.py`. The shared adapter passes
+`PROFILE_PARAMETERS_JSON` to both HDL elaboration and Python. Python derives
+the depth-dependent default thresholds when they are absent from the manifest.
 
-The current Design Compiler adapter reads
-`$(CONSTRAINT_DIR)/timing.sdc`. Keep `SYNTHESIS_CONSTRAINT_FILE` consistent with
-that file.
+PyUVM does not call or import SVA or HDL coverage. The shared runner compiles:
 
-Qualification paths include `COVERAGE_QUALIFICATION_POLICY`,
-`QUALIFICATION_CAMPAIGN_MANIFEST`, `STATIC_INTENT_CONFIG`,
-`OPENROAD_EVIDENCE_POLICY`, and the optional
-`PARAMETER_PROFILE_MANIFEST`. Keep these files versioned and below
-`MODULE_ROOT` so release evidence can hash them.
+1. `filelists/rtl.f`, including common `dff` and `counter` sources.
+2. `filelists/properties.f`, supplying the shared predicate include path.
+3. `filelists/assertions.f`, compiling the checker and its DUT bind.
+4. `filelists/coverage.f`, compiling the HDL coverage model and its DUT bind.
 
-## Flow states
+Those bound modules execute inside the simulator alongside Python stimulus.
+The same sources are used by the normal testbench and the explicit formal
+instances. Python checks public-port ordering, conservative occupancy, and
+scenario accounting independently; it does not implement another copy of the
+Gray-pointer or protocol-hold SVA.
 
-Every canonical flow has an explicit module policy:
+The BFM snapshots both interfaces before driving any scheduled rising edges.
+Coincident edges therefore use the same pre-edge occupancy. It yields at
+`ReadWrite` after driving clocks to settle HDL without advancing past the next
+scheduled event. This follows the
+[cocotb timing model](https://docs.cocotb.org/en/stable/timing_model.html).
+Periods, stops, and phases are independently scheduled; there is no shared
+hardware clock. Producer offers change on falling write edges and remain held
+until a sampled acceptance or reset cancellation.
 
-```make
-FLOW_verilator_sim := enabled
-FLOW_pyuvm_open_source := enabled
-FLOW_openroad := disabled
-```
+Reports live in `reports/<profile>/pyuvm_open_source/`:
 
-Only `enabled` and `disabled` are valid. Disabled flows record `SKIP` when their
-target is invoked. The quality gate requires `PASS` for enabled flows and
-`SKIP` for disabled flows.
-
-The template enables normal Verilator simulation, open-source PyUVM, coverage
-qualification, negative testing, four-state testing, and static-intent checks
-in the portable gate. OpenROAD is enabled only by the dedicated physical job.
-All commercial flows are disabled by default and must be enabled deliberately
-in a qualified licensed environment.
-
-Run:
-
-```sh
-make flow-config-check
-```
-
-Review the output after every state or dependency change.
-
-Coverage qualification depends on the normal Verilator simulation artifact:
-
-```make
-FLOW_DEPENDENCIES_coverage_qualification := verilator_sim
-```
-
-The validator rejects an enabled flow whose dependency is disabled, as well as
-unknown IDs, cycles, and contradictory aggregate policy.
-
-## Parameter profiles
-
-The example `config/examples/parameter-profiles.json` qualifies `DATA_WIDTH`
-values 1, 32, and 64 without making profile selection mandatory for the normal
-single-module command. Validate and run it with:
-
-```sh
-make PARAMETER_PROFILE_MANIFEST=config/examples/parameter-profiles.json \
-  profile-manifest-check
-make PARAMETER_PROFILE_MANIFEST=config/examples/parameter-profiles.json \
-  profile-list
-make PARAMETER_PROFILE_MANIFEST=config/examples/parameter-profiles.json \
-  profile-matrix
-make PARAMETER_PROFILE_MANIFEST=config/examples/parameter-profiles.json \
-  all-profiles PROFILE_JOBS=3
-```
-
-Production modules should move their reviewed manifest to
-`config/parameter-profiles.json`. Once that default exists, ordinary flow
-targets require `PROFILE=<name>`. Each profile receives isolated
-`reports/<profile>/` and `work/<profile>/` trees. `all-profiles` uses bounded
-parallel execution and fails when any child fails or lacks required evidence.
-
-## Qualification and release inputs
-
-The module-owned policy files use versioned schemas supplied by the pinned
-methodology:
-
-| Input | Purpose |
+| Artifact | Meaning |
 | --- | --- |
-| `config/coverage-policy.json` | Independent line, branch, toggle, user, named coverpoint, and formal-cover requirements |
-| `config/qualification-campaigns.json` | Positive controls, expected failures, mutations, and Icarus X/Z detection |
-| `config/static-intent.json` | Expected timing kind, SDC commands and ports, profile consistency, and UPF structure |
-| `flows/openroad/evidence-policy.json` | Required physical artifacts, report patterns, and metric thresholds |
+| `status.txt`, `results.xml` | Adapter result and executed PyUVM JUnit test |
+| `compile.log`, `simulation.log`, `run.log` | Build, stimulus/checker, and runner logs |
+| `coverage.dat`, `coverage.info` | Simulator-native RTL, SVA, and HDL coverpoint data |
+| `functional-coverage.json` | Separate Python scenario hits, profile, fixed seed, and epoch totals |
+| `cross-coverage.json` | Individual native HDL cross bins, including zero hits; integrity only, no quantitative PASS |
+| `versions.log` | Python, PyUVM, cocotb, and simulator identity |
 
-Run the gates independently with `make open-coverage`,
-`make open-negative`, `make open-four-state`, and
-`make open-static-intent`. See [Qualification and release
-evidence](qualification.md) for their evidence and signoff boundaries.
+`./.github/scripts/check-pyuvm-evidence.sh <report-dir>` rejects missing files,
+SKIP/FAIL, empty/failed/skipped JUnit, missing shared HDL sources, wrong profile
+parameters, unmet implemented scenario hits, or inconsistent reset accounting.
+Native and container GitHub Actions jobs run this check after the portable gate.
+It is an integrity/scenario check, not quantitative coverage release approval.
+The existing quantitative coverage policy still selects `verilator_sim` and
+remains disabled pending review. Evidence from the two simulations is not merged.
 
-## PyUVM and shared verification
+The PyUVM evidence script also calls `check-cross-coverage.py`. CI explicitly
+runs that collector for `reports/<profile>/verilator_sim` as well. It rejects
+missing/duplicate native cross identities; it does not discard zero-hit bins.
+The [HDL model](coverage-model.md) documents clock/reset sampling, bin ranges,
+the shared quantitative parser's unsupported `covergroup` metric, and the
+remaining qualification/vacuity boundary. State-cross totals must match
+independent qualified-event counters, and all crosses conserve component counts.
+No new simulation backend is added.
 
-PyUVM does not import or invoke SystemVerilog assertions. The Python test drives
-and observes `PYUVM_TOP` through cocotb. During model construction, the shared
-adapter compiles the following HDL layers in order:
+The same test/filelists are configured for the shared VCS/Xcelium adapters, but
+commercial PyUVM remains disabled and NOT_RUN until site qualification. Icarus
+four-state campaigns remain separate; the default Verilator PyUVM result does
+not qualify unknown payload/control behavior or metastability.
 
-1. `PYUVM_FILELIST` for the DUT and required packages
-2. `PROPERTY_FILELIST` for shared sequence and property definitions
-3. `ASSERTION_FILELIST` for assertion checkers and bind wrappers
-4. `COVERAGE_FILELIST` for HDL coverage models and bind wrappers
+### Automated negative controls
 
-The simulator therefore evaluates SVA and HDL coverage concurrently with the
-Python-driven test. A terminating SVA failure also fails the PyUVM flow. Normal
-SystemVerilog simulation uses the same property, assertion, and coverage lists.
-The SymbiYosys proof and cover configurations explicitly instantiate the same
-wrappers because open-source formal frontends do not reliably apply
-simulation-oriented `bind` statements.
+`config/qualification-campaigns.json` selects a passing full PyUVM regression
+and the `test_async_fifo_assertion_control` producer-offer fault in separate
+case-specific report/work roots. `.github/scripts/run-pyuvm-control.sh` calls
+the existing shared adapter and forwards the simulator log for the expected
+named SVA diagnostic. Raw fault evidence stays FAIL. Only the shared campaign
+can award expected-failure PASS, and only after its positive control passes.
+The ordinary PyUVM regression is not replaced by the fault test.
 
-The main module-owned settings are:
+The fault adapter writes its untouched reports under the case work root at
+`work/raw-reports/minimum/pyuvm_open_source/`. Compact logs, JUnit and tool
+identity are copied to the case report root at `reports/raw-pyuvm/`, with raw
+status preserved as `raw-status.txt`. This separates expected simulator failure
+from the campaign `status.txt` consumed by the recursive profile gate scanner.
+GitHub Actions already archives the enclosing campaign reports, including this
+raw evidence. A wrong diagnostic or unexpected success still fails the campaign.
 
-| Variable | Purpose |
-| --- | --- |
-| `PROPERTY_FILELIST` | Shared sequences and temporal property definitions |
-| `ASSERTION_FILELIST` | Assertion checker and bind wrapper sources |
-| `COVERAGE_FILELIST` | HDL coverage model and bind wrapper sources |
-| `PYUVM_FILELIST` | DUT sources compiled for the PyUVM HDL top |
-| `PYUVM_TOP` | HDL top visible to cocotb |
-| `PYUVM_TEST_MODULE` | Importable Python module containing decorated PyUVM tests |
-| `PYUVM_TEST_PATH` | Directory prepended to the Python import path |
-| `PYUVM_COVERAGE` | Enables simulator-native coverage when set to `enabled` |
-| `FORMAL_COVER_CONFIG` | SymbiYosys cover reachability configuration |
+Both nested PyUVM controls and the RTL-state fault baseline explicitly select
+`PROFILE=minimum DISABLED_FLOWS=`. This clears the exported disabled-flow list
+derived from the outer profile and recomputes policy for the fixed fixture.
+It does not enable formal in the outer nominal profile or alter the pinned
+methodology. `minimum` and `nominal` enable these campaigns by default through
+`open-source`. See the [verification plan](verification-plan.md#negative-and-four-state-plan)
+for the fixed fixture parameters and remaining fault coverage.
 
-Run the portable PyUVM flow directly with:
+## Dependency baseline
 
-```sh
-make open-pyuvm
-```
+The parent repository's gitlinks pin `mosaic-flow/` and
+`submodules/mosaic-common/`. `.gitmodules` records their paths and URLs, so no
+separate dependency manifest is needed. Initialize both with
+`git submodule update --init --recursive`.
 
-The commercial policy is disabled in the template. In an authorized licensed
-environment, enable `FLOW_pyuvm_commercial` and select the qualified backend:
+The common submodule is checked out at MC20261005V1. `filelists/rtl.f` includes
+only its `dff` and `counter` sources, which the FIFO instantiates directly.
+Formal staging, equivalence, negative campaigns, and the draft physical source
+list include the same dependencies. No common source is copied or modified.
+Formatting applies to FIFO-owned sources, not the pinned dependency's style.
 
-```sh
-make PYUVM_COMMERCIAL_SIMULATOR=vcs commercial-pyuvm
-make PYUVM_COMMERCIAL_SIMULATOR=xcelium commercial-pyuvm
-```
+Pointer counters use asynchronous reset, upward counting, and wrapping rather
+than saturation. Clear/load inputs are inactive. Local `dff` banks use explicit
+asynchronous reset values and capture enables. Dedicated synchronizer chains
+retain their CDC attributes and payload storage remains unreset.
+Integrating repos still provide reset synchronization/coordination.
+MC20261005V1 supplies RTL primitives, not a versioned channel contract. The
+proposed FIFO-owned [AFIFO-CHANNEL-V1](contracts/async-fifo-channel-v1.md) is
+drafted from issue #1. Publisher approval, issue amendment and immutable
+publication remain pending, separately from the common gitlink selection.
 
-Both commercial backends consume the same Python test and shared SystemVerilog
-verification layers. Simulator-specific compatibility and coverage options
-must be qualified before they become release evidence.
-
-`reports/pyuvm_open_source/coverage.dat` and `coverage.info` are native HDL
-coverage evidence. `functional-coverage.json` is produced by the Python test
-and remains a separate verification artifact. Neither form replaces the other.
-The complete adapter contract and optional simulator settings are documented in
-the shared
-[configuration reference](../mosaic-flow/docs/configuration.md#design-and-path-variables).
-
-## Dependencies
-
-Dependencies use canonical flow IDs and replace the complete shared dependency
-list:
-
-```make
-FLOW_DEPENDENCIES_eqy_equivalence := yosys_synthesis
-FLOW_DEPENDENCIES_synopsys_primepower := vcs_sim synopsys_synthesis
-```
-
-The configuration validator rejects unknown IDs, self dependencies, cycles,
-and enabled flows that depend on disabled flows. The runner requires every
-dependency to record `PASS` before launching the dependent tool.
-
-Use dependencies for real artifact or policy requirements. Do not add edges
-only to force a preferred display order.
-
-## Diagnostic overrides
-
-A one-run Make assignment can inspect a different policy without editing the
-project file:
+## Containers
 
 ```sh
-make FLOW_symbiyosys_formal=disabled open-source
-make CDC_TOOL=sg synopsys-cdc
+docker build --build-context mosaic-flow=./mosaic-flow \
+  --build-arg MOSAIC_FLOW_REVISION=0bd222f827afd802944d5f7e6ebc2ccc3a96f7ea \
+  -t mosaic-async-fifo:portable .
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$PWD:/workspace" mosaic-async-fifo:portable \
+  all-profiles PROFILE_JOBS=2 PROFILE_TARGET=open-source
 ```
 
-`FORCE_FLOW=1` may execute one disabled flow for diagnosis:
+Container and hosted CI results must be recorded separately from native evidence.
+No dirty-tree release manifest is publishable. Mandatory gates are listed in
+`RELEASE_SUPPLEMENTAL_GATES`, so the shared manifest collector also rejects
+missing or SKIP ASIC, contract, coverage, and release-review evidence. Portable
+CI does not generate a publishable release manifest.
 
-```sh
-make open-formal FORCE_FLOW=1
-```
-
-The flow remains disabled in project policy, so the aggregate gate still expects
-`SKIP`. Do not use force mode as release evidence.
-
-## Technology setup
-
-Commercial implementation uses environment-provided site data:
-
-| Variable | Purpose |
-| --- | --- |
-| `TECH_SETUP_TCL` | Optional setup sourced by synthesis, timing, and power Tcl |
-| `TARGET_LIBRARY` | Target technology library used by site setup |
-| `LINK_LIBRARY` | Link libraries used by site setup |
-| `OPERATING_CONDITION` | Requested analysis corner used by site setup |
-| `ACTIVITY_FILE` | SAIF activity consumed by PrimePower |
-
-These values are empty or generic in the template. Supply them through the
-authorized local environment. Never commit licenses, credentials, PDK paths, or
-proprietary libraries.
-
-## Tool executable overrides
-
-The shared methodology defines executable defaults. Override them only when the
-site installation uses a different command or wrapper:
-
-```sh
-make VERILATOR_CMD=/opt/verilator/bin/verilator open-lint
-make SYNTH_BIN=/eda/synopsys/bin/dc_shell synopsys-synth
-```
-
-Do not pin open-source versions in this repository. Update the `mosaic-flow`
-gitlink to a qualified release that carries the new version manifest.
-
-## Updating the methodology revision
-
-Fetch and inspect the candidate revision:
-
-```sh
-git -C mosaic-flow fetch origin
-git -C mosaic-flow checkout --detach <qualified-commit>
-git add mosaic-flow
-```
-
-Verify the parent gitlink and submodule checkout agree:
-
-```sh
-git submodule status
-git ls-files -s mosaic-flow
-git -C mosaic-flow rev-parse HEAD
-```
-
-Then rerun native, containerized, and applicable commercial gates. Review the
-candidate's documentation and release notes for changed inputs, statuses, tool
-versions, and policy before accepting the pointer update.
-
-## Further reference
-
-For multiple independently checked tops in one repository, apply this
-configuration hierarchy separately in each module root. The repository-level
-manifest and GitHub Actions matrix are documented in
-[Multi-module repositories](multi-module-repositories.md).
-
-The authoritative shared configuration semantics are documented in
-[`mosaic-flow/docs/configuration.md`](../mosaic-flow/docs/configuration.md).
-The complete flow IDs, inputs, outputs, and tool references are in the shared
-[flow catalog](../mosaic-flow/docs/flows.md).
+`RELEASE_ADDITIONAL_INPUTS` uses the shared collector to hash the interface,
+exact proposed scope and protocol/cancellation artifact. It does not create
+`contract_review` PASS evidence. The release owner must record approval of the
+artifact version, repository revision, content hash and selected tuple before
+that supplemental gate can close.

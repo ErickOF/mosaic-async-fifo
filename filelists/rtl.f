@@ -1,2 +1,4 @@
 +incdir+rtl
-rtl/mosaic_module.sv
+submodules/mosaic-common/rtl/dff.sv
+submodules/mosaic-common/rtl/counter.sv
+rtl/async_fifo.sv

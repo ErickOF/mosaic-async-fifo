@@ -3,7 +3,8 @@
   "scope": {
     "include": [
       "rtl/*.sv",
-      "verif/coverage/*.sv"
+      "verif/coverage/*.sv",
+      "verif/coverage/*.svh"
     ]
   },
   "thresholds": {
@@ -13,10 +14,11 @@
     "user": 100
   },
   "coverpoints": [
-    {"name": "enabled_operation", "minimum_hits": 1},
-    {"name": "disabled_operation", "minimum_hits": 1},
-    {"name": "representative_data", "minimum_hits": 1},
-    {"name": "representative_output", "minimum_hits": 1}
+    {"name": "accepted_write", "minimum_hits": 1},
+    {"name": "observed_full", "minimum_hits": 1},
+    {"name": "accepted_read", "minimum_hits": 1},
+    {"name": "stalled_output", "minimum_hits": 1},
+    {"name": "observed_empty", "minimum_hits": 1}
   ],
   "exclusions": [],
   "formal": {

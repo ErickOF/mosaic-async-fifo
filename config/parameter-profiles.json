@@ -1,0 +1,108 @@
+{
+  "schema": "mosaic-parameter-profiles-v1",
+  "include": [
+    {
+      "name": "minimum",
+      "parameters": {
+        "DATA_WIDTH": 1,
+        "DEPTH": 2,
+        "SYNC_STAGES": 2,
+        "ALMOST_FULL_LEVEL": 1,
+        "ALMOST_EMPTY_LEVEL": 0
+      },
+      "flows": [
+        "verible_lint",
+        "verible_format",
+        "slang_elaboration",
+        "verilator_lint",
+        "yosys_synthesis",
+        "symbiyosys_formal",
+        "eqy_equivalence",
+        "verilator_sim",
+        "pyuvm_open_source",
+        "negative_qualification",
+        "four_state_qualification"
+      ]
+    },
+    {
+      "name": "nominal",
+      "parameters": {
+        "DATA_WIDTH": 32,
+        "DEPTH": 8,
+        "SYNC_STAGES": 2,
+        "ALMOST_FULL_LEVEL": 7,
+        "ALMOST_EMPTY_LEVEL": 1
+      },
+      "flows": [
+        "verible_lint",
+        "verible_format",
+        "slang_elaboration",
+        "verilator_lint",
+        "yosys_synthesis",
+        "eqy_equivalence",
+        "verilator_sim",
+        "pyuvm_open_source",
+        "negative_qualification",
+        "four_state_qualification"
+      ]
+    },
+    {
+      "name": "three_stages",
+      "parameters": {
+        "DATA_WIDTH": 64,
+        "DEPTH": 16,
+        "SYNC_STAGES": 3,
+        "ALMOST_FULL_LEVEL": 1,
+        "ALMOST_EMPTY_LEVEL": 0
+      },
+      "flows": [
+        "verible_lint",
+        "verible_format",
+        "slang_elaboration",
+        "verilator_lint",
+        "yosys_synthesis",
+        "eqy_equivalence",
+        "verilator_sim",
+        "pyuvm_open_source"
+      ]
+    },
+    {
+      "name": "wide_deep",
+      "parameters": {
+        "DATA_WIDTH": 128,
+        "DEPTH": 64,
+        "SYNC_STAGES": 4
+      },
+      "flows": [
+        "verible_lint",
+        "verible_format",
+        "slang_elaboration",
+        "verilator_lint",
+        "yosys_synthesis",
+        "eqy_equivalence",
+        "verilator_sim",
+        "pyuvm_open_source"
+      ]
+    },
+    {
+      "name": "threshold_edges",
+      "parameters": {
+        "DATA_WIDTH": 32,
+        "DEPTH": 8,
+        "SYNC_STAGES": 2,
+        "ALMOST_FULL_LEVEL": 8,
+        "ALMOST_EMPTY_LEVEL": 7
+      },
+      "flows": [
+        "verible_lint",
+        "verible_format",
+        "slang_elaboration",
+        "verilator_lint",
+        "yosys_synthesis",
+        "eqy_equivalence",
+        "verilator_sim",
+        "pyuvm_open_source"
+      ]
+    }
+  ]
+}

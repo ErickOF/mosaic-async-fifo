@@ -1,0 +1,50 @@
+{
+    "schema": "mosaic-parameter-profiles-v1",
+    "include": [
+        {
+            "name": "depth4",
+            "parameters": {"DATA_WIDTH": 1, "DEPTH": 4, "SYNC_STAGES": 2, "ALMOST_FULL_LEVEL": 3, "ALMOST_EMPTY_LEVEL": 1},
+            "flows": ["symbiyosys_formal"]
+        },
+        {
+            "name": "depth4_edges",
+            "parameters": {"DATA_WIDTH": 2, "DEPTH": 4, "SYNC_STAGES": 2, "ALMOST_FULL_LEVEL": 4, "ALMOST_EMPTY_LEVEL": 3},
+            "flows": ["symbiyosys_formal"]
+        },
+        {
+            "name": "depth2_three_stages",
+            "parameters": {"DATA_WIDTH": 1, "DEPTH": 2, "SYNC_STAGES": 3, "ALMOST_FULL_LEVEL": 1, "ALMOST_EMPTY_LEVEL": 0},
+            "flows": ["symbiyosys_formal"]
+        },
+        {
+            "name": "reset_depth2",
+            "parameters": {"DATA_WIDTH": 1, "DEPTH": 2, "SYNC_STAGES": 2, "ALMOST_FULL_LEVEL": 1, "ALMOST_EMPTY_LEVEL": 0, "RUNTIME_RESET": 1},
+            "flows": ["symbiyosys_formal"]
+        },
+        {
+            "name": "reset_depth4",
+            "parameters": {"DATA_WIDTH": 1, "DEPTH": 4, "SYNC_STAGES": 2, "ALMOST_FULL_LEVEL": 3, "ALMOST_EMPTY_LEVEL": 1, "RUNTIME_RESET": 1},
+            "flows": ["symbiyosys_formal"]
+        },
+        {
+            "name": "reset_three_stages",
+            "parameters": {"DATA_WIDTH": 1, "DEPTH": 2, "SYNC_STAGES": 3, "ALMOST_FULL_LEVEL": 1, "ALMOST_EMPTY_LEVEL": 0, "RUNTIME_RESET": 1},
+            "flows": ["symbiyosys_formal"]
+        },
+        {
+            "name": "delayed_reset_depth2",
+            "parameters": {"DATA_WIDTH": 1, "DEPTH": 2, "SYNC_STAGES": 2, "ALMOST_FULL_LEVEL": 1, "ALMOST_EMPTY_LEVEL": 0, "RUNTIME_RESET": 1, "VARIABLE_CAPTURE": 1},
+            "flows": ["symbiyosys_formal"]
+        },
+        {
+            "name": "delayed_reset_depth4",
+            "parameters": {"DATA_WIDTH": 1, "DEPTH": 4, "SYNC_STAGES": 2, "ALMOST_FULL_LEVEL": 3, "ALMOST_EMPTY_LEVEL": 1, "RUNTIME_RESET": 1, "VARIABLE_CAPTURE": 1},
+            "flows": ["symbiyosys_formal"]
+        },
+        {
+            "name": "delayed_reset_three_stages",
+            "parameters": {"DATA_WIDTH": 1, "DEPTH": 2, "SYNC_STAGES": 3, "ALMOST_FULL_LEVEL": 1, "ALMOST_EMPTY_LEVEL": 0, "RUNTIME_RESET": 1, "VARIABLE_CAPTURE": 1},
+            "flows": ["symbiyosys_formal"]
+        }
+    ]
+}

@@ -31,8 +31,8 @@ ENV FLOW_ROOT=/opt/mosaic-flow \
 
 ARG MOSAIC_FLOW_REVISION=unknown
 LABEL org.opencontainers.image.description="Open-source RTL verification environment for MOSAIC modules" \
-      org.opencontainers.image.source="https://github.com/ECASLab/mosaic-module-template" \
-      org.opencontainers.image.title="MOSAIC module CI" \
+      org.opencontainers.image.source="https://github.com/ErickOF/mosaic-async-fifo" \
+      org.opencontainers.image.title="MOSAIC asynchronous FIFO portable CI" \
       org.opencontainers.image.version="${MOSAIC_FLOW_REVISION}"
 
 WORKDIR /workspace

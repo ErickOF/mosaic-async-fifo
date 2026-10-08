@@ -1,138 +1,108 @@
-# MOSAIC RTL module repository template
+# MOSAIC asynchronous FIFO
 
-Template for one independently versioned MOSAIC RTL module. Each module owns
-its implementation, unit verification, design constraints, flow policy, and
-release evidence. The reusable execution methodology is pinned through the
-`mosaic-flow` Git submodule.
+Parameterizable dual-clock FIFO for opaque MOSAIC records. The RTL top is
+`async_fifo`. Development is tracked by
+[issue #1](https://github.com/ErickOF/mosaic-async-fifo/issues/1).
 
-## Start here
+## Architecture
 
-This file is the operational entry point for cloning and running the repository.
-The [module documentation index](docs/README.md) organizes the detailed design,
-configuration, verification, waiver, and release records. Shared flow behavior
-and tool adapters are documented in
-[`mosaic-flow/docs/`](mosaic-flow/docs/README.md).
+- Locally owned binary pointers with Gray-coded pointer crossings.
+- Exactly `SYNC_STAGES` synchronizer registers per crossing.
+- Registered local full, empty, and conservative occupancy estimates.
+- Registered prefetched output, stable under backpressure.
+- Coordinated reset and synchronized domain-up handshake.
+- Sticky shutdown after an observed one-sided reset until coordinated recovery.
 
-Initialize the pinned methodology and run the portable acceptance gate:
+Memory contents are not reset. This is an always-on, same-voltage unit-level
+profile. Technology-specific storage, metastability, reset-domain, timing, and
+power qualification are still required before ASIC release.
+
+## Run
 
 ```sh
 git submodule update --init --recursive
-make flow-config-check
-make clean open-source
+make profile-manifest-check
+make PROFILE=nominal flow-config-check
+make PROFILE=nominal open-source
+make all-profiles PROFILE_JOBS=2 PROFILE_TARGET=open-source
 ```
 
-The first open-source target installs the pinned OSS CAD Suite, Verible, Slang,
-PyUVM, and cocotb releases under
-`${XDG_CACHE_HOME:-$HOME/.cache}/mosaic`. Set `MOSAIC_TOOLS_ROOT` to use another
-cache location.
+The root Makefile consumes pinned `mosaic-flow` release `MF20260910V1`.
+Tools are installed in `${XDG_CACHE_HOME:-$HOME/.cache}/mosaic`. Work and reports
+are isolated under `work/<profile>/` and `reports/<profile>/`.
 
-## Repository contract
+The [proposed first-release envelope](docs/release-scope.md#parameter-envelope)
+contains five exact parameter tuples, including their resolved thresholds.
+Scope approval is pending. The profiles do not qualify the Cartesian product
+of their widths, depths, stages or thresholds, and do not authorize ASIC release.
 
-Each module repository owns:
+## Verification
 
-- Synthesizable RTL and public packages
-- Unit-level tests, assertions, formal properties, and coverage
-- Module-specific timing, CDC, DFT, and low-power intent
-- Flow enablement policy and design-owned flow inputs
-- Reviewed waivers with justification and ownership
-- Reproducible release evidence for supported configurations
+Independent queue scoreboard, bound assertions, separate HDL coverage, and
+multiclock formal reference storage are included. The original `minimum` proof
+is complemented by a separate nine-target matrix for depth four, two-bit
+payloads, three stages, runtime cancellation and variable first-stage capture.
+Each exact profile needs independent proof and cover evidence. See
+[formal models and scope](docs/formal-model.md). Icarus campaigns exercise
+mixed known/X/Z payloads, external and final-synchronizer unknowns with paired
+disabled-monitor controls, invalid parameters and injected output corruption.
+The automated negative campaign also detects actual pointer/domain-up stage,
+flag and memory faults, plus a PyUVM producer-offer assertion fault. See the
+[fault campaign scope](docs/verification-plan.md#negative-and-four-state-plan).
 
-The module must remain independently verifiable before system integration.
-
-## Layout
-
-```text
-rtl/                  Synthesizable SystemVerilog
-verif/                TB, PyUVM, properties, assertions, formal, and coverage
-filelists/            Ordered design and verification source lists
-config/               Module identity and flow policy
-flows/                Module-owned inputs grouped by shared flow name
-docs/                 Design, configuration, verification, and release records
-mosaic-flow/           Pinned shared methodology Git submodule
-reports/               Generated flow summaries and release evidence
-work/                  Generated tool databases
-```
-
-See the [repository structure](docs/repository-structure.md) for ownership and
-source-of-truth rules.
-
-Repositories that intentionally own several related RTL modules should use the
-[multi-module repository guide](docs/multi-module-repositories.md). Each module
-retains an independent project root, flow policy, regression, and report tree.
-
-## Configuration
-
-The root `Makefile` is a thin consumer of `mosaic-flow/mk/project.mk`. The
-project API preserves the ordinary single-module commands and also activates
-validated module and parameter-profile manifests when a repository declares
-them.
-Module identity and paths belong in `config/design.mk`. Flow states and
-dependencies belong in `config/flows.mk`. Tool-specific project inputs mirror
-the shared hierarchy under `flows/<flow-name>/`.
-
-Do not edit the submodule to customize one module. The complete override model
-is documented in [Project configuration](docs/project-configuration.md).
-
-## Creating a module
-
-Start from [Creating a module](docs/creating-a-module.md). At minimum:
-
-1. Rename the example RTL and verification hierarchy.
-2. Replace the example datapath, testbench, and PyUVM smoke verification.
-3. Update the RTL, property, assertion, coverage, simulation, and formal lists.
-4. Define timing, CDC, DFT, low-power, formal, and physical intent.
-5. Replace the example coverage, campaign, static-intent, and physical-evidence
-   policies.
-6. Declare representative parameter profiles and required evidence.
-7. Review flow states and dependencies.
-8. Replace template documentation with module-specific records.
-9. Run native, containerized, physical, and applicable commercial
-   qualification.
-
-## Continuous integration
-
-`.github/workflows/rtl-simulation.yml` runs the portable gate using both native
-and pinned-container execution. It also qualifies the representative parameter
-profiles and runs a dedicated containerized Nangate45 OpenROAD job. It does not
-invoke licensed commercial tools.
-
-`ECASLab/mosaic-flow` is public, so CI does not require an additional repository
-secret. It checks out the exact submodule revision recorded here rather than a
-floating branch.
-
-Manual container build and execution commands are documented under
-[initial acceptance](docs/creating-a-module.md#run-initial-acceptance).
-
-## Commercial qualification
-
-Synopsys flows run only in an authorized local environment. Verify the
-environment explicitly before starting the aggregate flow:
+PyUVM runs on Verilator by default for all five profiles, including GitHub
+Actions. Its independent queue scoreboard covers full/empty boundaries,
+backpressure, wraps, conservative levels, coincident/unequal/drifting clocks,
+both stopped-startup directions, no-bubble reads, skewed reset assertion, and
+coordinated/unilateral reset recovery. A dedicated equal-nominal-rate drift case
+requires five measured relative-phase ranges and balanced slow/fast intervals.
+Six stopped-clock reset cases cross write/read/both clocks with both assertion
+orders and require checked delivery after coordinated recovery. See the
+[scenario matrix](docs/verification-plan.md#reset-and-phase-scenario-matrix).
+The simulator compiles the same property, assertion, and HDL coverage sources
+used by normal simulation and formal. Python scenario evidence is separate.
+The [HDL coverage model](docs/coverage-model.md) implements all twelve required
+coverage items in twenty native cross families. Per-bin hit/zero-hit evidence
+is retained separately for each simulator and profile, not inferred from
+scenario counters. Quantitative closure and assertion-vacuity review remain open.
 
 ```sh
-make synopsys-check-env
-make synopsys-all
+make PROFILE=nominal open-pyuvm
+./.github/scripts/check-pyuvm-evidence.sh reports/nominal/pyuvm_open_source
 ```
 
-Commercial licenses, credentials, PDK paths, technology libraries, and site
-setup files must not be committed. The template VC Lint, CDC, SpyGlass DFT, and
-VC LP adapters require qualification against the locally installed tool release
-before they can provide signoff evidence.
+See [PyUVM configuration](docs/project-configuration.md#pyuvm-and-shared-verification).
+Quantitative coverage closure, broader formal parameters, assumption/vacuity
+review and expanded mutation campaigns
+remain open. Commercial PyUVM has not been executed or qualified for this FIFO.
 
-## Release policy
+## Dependencies and Integration
 
-A release is acceptable only when every enabled flow has the expected passing
-evidence and every disabled flow is justified by project policy. Use the
-[release checklist](docs/release-checklist.md) as the final review record and
-keep all accepted exceptions in [Reviewed waivers](docs/waivers.md).
+`mosaic-common` is a Git submodule at `submodules/mosaic-common`, checked out
+at the user-selected release `MC20261005V1`. The parent repository's gitlink
+pins its immutable revision. `.gitmodules` records its path and repository URL.
+The initialization command above fetches this dependency and its nested submodules.
+The FIFO instantiates common `counter` modules for its wrapping binary pointers
+and common `dff` banks for local Gray, domain-up, status, and read-output state.
+The source filelist reads these directly from the pinned submodule. Dedicated
+CDC chains and unreset payload storage remain local to the FIFO.
+The system integrator provides coordinated reset and one local reset
+synchronizer per clock domain.
+The selected common release has no versioned ready-valid/reset-cancellation
+artifact. The proposed FIFO-owned
+[`AFIFO-CHANNEL-V1`](docs/contracts/async-fifo-channel-v1.md) extracts the issue's
+existing behavior. Publisher approval, amendment of the issue's
+`mosaic-contracts` references and immutable publication remain pending. Common
+RTL dependency selection is not protocol approval. See the
+[specification decision record](docs/release-scope.md).
 
-The open-source gate covers style, formatting, elaboration, lint, generic
-synthesis, formal proof and cover reachability, RTL-to-netlist equivalence,
-SystemVerilog simulation, PyUVM, quantitative native HDL coverage, negative and
-four-state campaigns, and portable SDC and UPF intent checks. PyUVM functional
-coverage remains a separate report and must be reviewed alongside native
-coverage. The public Nangate45 job is exploratory implementation evidence.
-Technology-mapped signoff, timing, power, CDC, DFT, low-power, and physical
-verification use the configured authorized implementation environment.
+## Release Status
 
-The module-owned qualification contracts and release-manifest commands are
-summarized in [Qualification and release evidence](docs/qualification.md).
+This is an initial portable implementation, not a qualified ASIC release.
+Mandatory VC Lint, CDC/RDC, synchronizer MTBF, mapped synthesis review,
+PrimeTime, and PrimePower are NOT_RUN or BLOCKED. Disabling their adapters in
+the portable configuration is not a waiver. No release identifier is assigned.
+
+See the [documentation index](docs/README.md),
+[interface](docs/interface.md), [verification plan](docs/verification-plan.md),
+and [release checklist](docs/release-checklist.md).
