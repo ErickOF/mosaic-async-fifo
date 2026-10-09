@@ -1,2 +1,2 @@
-# Empty means Verible's default rule set. Add comma-separated rule configuration
-# only after recording the policy decision in docs/waivers.md.
+# Default rule set. The upper-snake-case constant spelling from issue #1 is
+# scoped in waivers.txt, not applied as a blanket lint disable.

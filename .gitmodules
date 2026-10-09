@@ -1,3 +1,6 @@
 [submodule "mosaic-flow"]
 	path = mosaic-flow
 	url = https://github.com/ECASLab/mosaic-flow.git
+[submodule "mosaic-common"]
+	path = submodules/mosaic-common
+	url = https://github.com/ECASLab/mosaic-common.git

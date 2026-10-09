@@ -1,10 +1,26 @@
 [gold]
-read_verilog -sv rtl/mosaic_module.sv
-prep -top mosaic_module
+read_verilog -sv submodules/mosaic-common/rtl/dff.sv submodules/mosaic-common/rtl/counter.sv rtl/async_fifo.sv
+prep -top async_fifo -flatten
+memory_map
+clk2fflogic
+opt
 
 [gate]
-read_verilog work/yosys_synthesis/mosaic_module_netlist.v
-prep -top mosaic_module
+read_verilog work/yosys_synthesis/async_fifo_netlist.v
+prep -top async_fifo -flatten
+memory_map
+clk2fflogic
+opt
+
+[match async_fifo]
+# Synthesis may discard unused bits of these lookahead aliases. Verify their
+# live consumers and pointer state instead of comparing undriven name remnants.
+gold-nomatch [wr]_bin_next
+
+[collect async_fifo]
+# Keep handshakes, primitive ports, binary/Gray aliases, and prefetch together.
+# Storage words remain separate to avoid one giant memory miter.
+group [wroup]*
 
 [strategy sat]
 use sat

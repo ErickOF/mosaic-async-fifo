@@ -1,18 +1,22 @@
 [options]
 mode prove
-depth 8
+depth 48
+timeout 1200
+multiclock on
 
 [engines]
-smtbmc bitwuzla
+abc pdr
 
 [script]
-read -formal -D MOSAIC_FORMAL -D MOSAIC_YOSYS_FORMAL -D FORMAL_ASSERTIONS -sv mosaic_module.sv mosaic_module_sva.sv mosaic_module_bind.sv mosaic_module_formal.sv
-prep -top mosaic_module_formal
+read -formal -D MOSAIC_FORMAL -D MOSAIC_YOSYS_FORMAL -sv dff.sv counter.sv async_fifo_capture_formal.sv async_fifo.sv async_fifo_sva.sv async_fifo_coverage.sv async_fifo_formal.sv
+prep -top async_fifo_formal -flatten
 
 [files]
-rtl/mosaic_module.sv
-verif/properties/mosaic_module_sequences.svh
-verif/properties/mosaic_module_properties.svh
-verif/assertions/mosaic_module_sva.sv
-verif/assertions/mosaic_module_bind.sv
-verif/formal/mosaic_module_formal.sv
+submodules/mosaic-common/rtl/dff.sv
+submodules/mosaic-common/rtl/counter.sv
+rtl/async_fifo.sv
+verif/properties/async_fifo_predicates.svh
+verif/assertions/async_fifo_sva.sv
+verif/coverage/async_fifo_coverage.sv
+verif/formal/async_fifo_formal.sv
+verif/formal/async_fifo_capture_formal.sv

@@ -3,62 +3,80 @@
   "sdc": {
     "profiles": [
       {
-        "name": "synthesis",
+        "name": "synthesis_draft",
         "path": "flows/synthesis/timing.sdc",
         "kind": "sequential",
         "expected_ports": {
-          "clock": ["clk_i"],
-          "input_delay": ["enable_i", "data_i"],
-          "output_delay": ["data_o"]
+          "clock": [
+            "i_w_clk",
+            "i_r_clk"
+          ],
+          "input_delay": [
+            "i_w_valid",
+            "i_w_data",
+            "i_w_rstb",
+            "i_r_ready",
+            "i_r_rstb"
+          ],
+          "output_delay": [
+            "o_w_ready",
+            "o_w_full",
+            "o_w_almost_full",
+            "o_w_level",
+            "o_w_init_done",
+            "o_r_valid",
+            "o_r_data",
+            "o_r_empty",
+            "o_r_almost_empty",
+            "o_r_level",
+            "o_r_init_done"
+          ]
         },
         "clocks": [
-          {"name": "clk_i", "period": 10.0, "port": "clk_i"}
+          {
+            "name": "w_clk",
+            "period": 10,
+            "port": "i_w_clk"
+          },
+          {
+            "name": "r_clk",
+            "period": 14,
+            "port": "i_r_clk"
+          }
         ],
-        "intentional_exceptions": [
-          {"command": "set_false_path", "from_ports": ["rst_ni"], "to_ports": []}
-        ]
-      },
-      {
-        "name": "physical",
-        "path": "flows/openroad/timing.sdc",
-        "kind": "sequential",
-        "expected_ports": {
-          "clock": ["clk_i"],
-          "input_delay": ["enable_i", "data_i"],
-          "output_delay": ["data_o"]
-        },
-        "clocks": [
-          {"name": "clk_i", "period": 10.0, "port": "clk_i"}
-        ],
-        "intentional_exceptions": [
-          {"command": "set_false_path", "from_ports": ["rst_ni"], "to_ports": []}
-        ]
-      }
-    ],
-    "consistency": [
-      {
-        "profiles": ["synthesis", "physical"],
-        "commands": [
-          "create_clock",
-          "set_clock_uncertainty",
-          "set_input_delay",
-          "set_output_delay",
-          "set_false_path"
-        ]
+        "intentional_exceptions": []
       }
     ]
   },
   "upf": {
     "path": "flows/vc_lp/power.upf",
-    "top": "mosaic_module",
+    "top": "async_fifo",
     "mode": "always_on",
     "required": {
-      "power_domains": ["PD_MOSAIC_MODULE"],
-      "supply_ports": ["VDD", "VSS"],
-      "supply_nets": ["VDD", "VSS"],
-      "supply_connections": ["VDD", "VSS"],
-      "domain_supplies": ["PD_MOSAIC_MODULE"]
+      "power_domains": [
+        "PD_ASYNC_FIFO"
+      ],
+      "supply_ports": [
+        "VDD",
+        "VSS"
+      ],
+      "supply_nets": [
+        "VDD",
+        "VSS"
+      ],
+      "supply_connections": [
+        "VDD",
+        "VSS"
+      ],
+      "domain_supplies": [
+        "PD_ASYNC_FIFO"
+      ]
     },
-    "forbidden_strategies": []
+    "forbidden_strategies": [
+      "isolation",
+      "retention",
+      "level_shifter",
+      "power_switch"
+    ]
   }
 }
