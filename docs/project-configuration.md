@@ -20,13 +20,26 @@ in a future mosaic-flow release rather than patched into this submodule.
 
 ## Portable and licensed scopes
 
-Verible style/format, Slang, Verilator lint/simulation, PyUVM, Yosys, EQY, and the
+Verible style/format, Slang, Verilator lint/simulation, PyUVM, and the
 negative/four-state campaigns are enabled where named by each profile.
 Within the portable matrix, multiclock formal is enabled only for `minimum`.
 The separate `config/formal-profiles.json` provides nine formal-only targets,
 using the same pinned adapter with a manifest override. See
 [formal models and commands](formal-model.md). Do not use those harness-only
 parameters with production simulation or synthesis tops.
+
+The owner has disabled standalone `yosys_synthesis` and `eqy_equivalence` at
+the FIFO unit level. Neither is required by the five portable profiles.
+The shared `open-source` gate records both as policy `SKIP`, including in
+GitHub Actions. Explicit `open-synth` and `open-equivalence` targets also skip
+without invoking their adapters. SymbiYosys remains enabled and uses Yosys for
+formal model preparation independently of those standalone flows.
+
+Synthesis/equivalence collateral and the EQY-to-synthesis dependency are retained
+for possible future use. Re-enabling them requires both flow flags and the
+applicable profile lists to be updated. Existing PASS evidence is historical,
+not a result for the current disabled policy. Technology-mapped integration
+qualification remains required and is not authorized by these skips.
 
 Quantitative coverage qualification and portable static intent remain
 unqualified. The existing static-intent parser does not qualify this module's

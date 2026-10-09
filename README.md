@@ -31,6 +31,11 @@ The root Makefile consumes pinned `mosaic-flow` release `MF20260910V1`.
 Tools are installed in `${XDG_CACHE_HOME:-$HOME/.cache}/mosaic`. Work and reports
 are isolated under `work/<profile>/` and `reports/<profile>/`.
 
+Standalone `yosys_synthesis` and `eqy_equivalence` are disabled at the FIFO
+unit level and report policy `SKIP` locally and in GitHub Actions. Formal
+verification remains enabled and still uses Yosys internally for model
+preparation. These skips do not waive technology-mapped integration checks.
+
 The [proposed first-release envelope](docs/release-scope.md#parameter-envelope)
 contains five exact parameter tuples, including their resolved thresholds.
 Scope approval is pending. The profiles do not qualify the Cartesian product

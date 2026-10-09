@@ -40,7 +40,7 @@ jobs:
     name: Formal / ${{ matrix.profile }}
     needs: profiles
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -136,7 +136,7 @@ jobs:
   container:
     name: Container / all profiles
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
         with:
@@ -166,10 +166,11 @@ jobs:
             .github/scripts/check-assertion-controls.sh
       - name: Run the formal matrix in the container
         run: |
+          # Proofs share this runner. Avoid competing PDR/SMT workloads inside it.
           docker run --rm --user "$(id -u):$(id -g)" \
             -v "${GITHUB_WORKSPACE}:/workspace" mosaic-async-fifo:portable \
             PARAMETER_PROFILE_MANIFEST=config/formal-profiles.json \
-            all-profiles PROFILE_JOBS=2 PROFILE_TARGET=open-formal \
+            all-profiles PROFILE_JOBS=1 PROFILE_TARGET=open-formal \
             REPORT_DIR=/workspace/reports/formal-container \
             WORK_DIR=/workspace/work/formal-container
           while IFS= read -r profile; do

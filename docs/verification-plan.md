@@ -193,9 +193,16 @@ They must not inherit any selected-profile proof status.
 
 ## Equivalence plan
 
-EQY compares RTL with each profile's actual Yosys-generated netlist. Both sides
-flatten the common primitive hierarchy, map storage to flops, and use
-`clk2fflogic` to model independent clock edges and
+Standalone Yosys synthesis and EQY equivalence are owner-approved policy `SKIP`
+at the FIFO unit level. They are disabled in `config/flows.mk` and excluded
+from the portable profile flow lists. Prior passing results remain historical
+evidence. The retained setup below applies only if these flows are re-enabled.
+Formal verification, including its internal Yosys model preparation, stays
+enabled. Technology-mapped integration qualification is not waived.
+
+The retained EQY setup compares RTL with each profile's actual Yosys-generated
+netlist. Both sides flatten the common primitive hierarchy, map storage to
+flops, and use `clk2fflogic` to model independent clock edges and
 asynchronous reset explicitly. The control relation is grouped to avoid invalid
 independent cuts through binary/Gray aliases and optimized memory read cones.
 Next-binary aliases are not name-based match points because synthesis can discard
@@ -205,12 +212,13 @@ Storage words are checked in separate partitions for scalable execution.
 The SAT strategy performs induction with maximum depth eight, not merely a
 bounded output comparison.
 
-This establishes generic synthesis preservation, not target SRAM suitability
-or technology-mapped synchronizer preservation.
+When run, this establishes generic synthesis preservation, not target SRAM
+suitability or technology-mapped synchronizer preservation.
 
-Simulation and generic synthesis read `dff` and `counter` through the FIFO RTL
-filelist. Icarus campaigns use that same filelist. Formal stages the exact common
-sources and flattens their hierarchy before proof/cover. FIFO checks remain
+Simulation and the retained generic synthesis setup read `dff` and `counter`
+through the FIFO RTL filelist. Icarus campaigns use that same filelist.
+Formal stages the exact common sources and flattens their hierarchy before
+proof/cover. FIFO checks remain
 independent of primitive internals and validate their integrated behavior.
 
 ## Coverage plan

@@ -20,6 +20,7 @@ PrimeTime, PrimePower, coverage closure, and site qualification remain open.
 - [ ] The `mosaic-flow` gitlink points to a qualified published revision.
 - [x] The resolved flow policy has been captured with `make flow-config-check`.
   Comment: Per-profile `reports/<profile>/flow-policy.log` and `parameter-profile.json` record applicable portable gates.
+  Comment: After the standalone synthesis/equivalence policy change, resolved configuration validates for all five portable and nine formal-only targets. Fresh native portable evidence in reports/unit-flow-policy records both disabled flows as SKIP in every profile. No formal target was removed.
 
 ## Interface and architecture
 
@@ -45,7 +46,7 @@ PrimeTime, PrimePower, coverage closure, and site qualification remain open.
 - [x] Verilator lint records the expected status.
   Comment: PASS for all five native profiles.
 - [x] Yosys generic synthesis records the expected status.
-  Comment: PASS for all five native and container profiles with common `counter` and `dff` instances. ASIC storage/synchronizer mapping remains unqualified.
+  Comment: Owner-approved policy SKIP at the FIFO unit level. The flow is disabled and excluded from all five portable profiles. Previous native/container PASS evidence is historical. Formal still uses Yosys for model preparation. ASIC storage/synchronizer mapping remains unqualified.
 - [ ] No unresolved warning is hidden outside the reviewed waiver files.
   Comment: Candidate STYLE-001, TB-001 and covergroup-scaffolding COV-001 are documented. Maintainer waiver review is pending. COV-001 is declaration-local, not a coverage-bin exclusion. Yosys array-to-register messages remain visible.
 
@@ -72,7 +73,7 @@ PrimeTime, PrimePower, coverage closure, and site qualification remain open.
 - [x] Formal cover mode demonstrates required scenario reachability.
   Comment: Scoped closure: every selected formal target passes cover mode in both environments within the 128-step bound, with latest witnesses at steps 41-53. Runtime covers include empty/partial/full cancellation, stalled head, held clocks, both peer-shutdown directions and repeated fresh-epoch recovery. Every delayed profile also reaches eight independent stale/forced-capture witnesses. Complete proofs check the wrap-phase invariants; no native bin is waived. Structured per-target statuses, source hashes and required traces are checked. Real-time crosses, wider profile coverage and systematic assertion non-vacuity remain separate open gates.
 - [x] RTL-to-Yosys-netlist equivalence passes.
-  Comment: PASS for all five native and container profiles using flattened primitive hierarchy, explicit clock-edge modeling, and storage partitions. Development before/after netlist equivalence also passes all five profiles, see `docs/portable-validation.md`.
+  Comment: Closed by owner-approved policy SKIP, not by a current equivalence PASS. Standalone EQY is disabled and excluded from all five portable profiles. Collateral and the synthesis prerequisite are retained. Previous native/container and development before/after results remain historical in `docs/portable-validation.md`. Technology-mapped integration qualification is not waived.
 - [x] Native HDL and Python functional coverage are reviewed independently.
   Comment: Twenty native HDL cross families implement all twelve required coverage items. The collector retains each bin, including zeros, independently of Python scenario JSON and the original five HDL points. Missing/duplicate identities fail integrity; VALID does not imply quantitative closure. See docs/coverage-model.md for native padding, sampling semantics and formal scope. No databases or profiles are merged.
 - [ ] Functional and code coverage goals are met or deviations are approved.
@@ -85,7 +86,7 @@ PrimeTime, PrimePower, coverage closure, and site qualification remain open.
   Comment: NOT_RUN: module-specific deficient-threshold control remains open. Eight isolated cross-artifact tests check missing bins, five-counter-only evidence, duplicates, wrong depth shape, SKIP, inflated cross sampling and zero-hit retention. State-cross totals must match ten independent HDL event counters. Those are integrity controls, not quantitative threshold enforcement.
 - [ ] Negative campaigns include successful controls and detect assertion,
   parameter rejection, elaboration, equivalence, and mutation failures as applicable.
-  Comment: All 24 declarative negative cases pass in minimum and nominal, natively and in the container. Actual RTL faults run at fixed minimum parameters, distinct from the four observation-only controls. PyUVM input_hold detection is automated, with untouched raw adapter FAIL archived as raw-status.txt and a separately attributable campaign PASS. Missing tools, wrong diagnostics, escaped faults and watchdogs cannot satisfy the negative expectation. Inequivalent-netlist, wider mutation and physical fault qualification remain pending.
+  Comment: All 24 declarative negative cases pass in minimum and nominal, natively and in the container. Actual RTL faults run at fixed minimum parameters, distinct from the four observation-only controls. PyUVM input_hold detection is automated, with untouched raw adapter FAIL archived as raw-status.txt and a separately attributable campaign PASS. Missing tools, wrong diagnostics, escaped faults and watchdogs cannot satisfy the negative expectation. Inequivalent-netlist qualification is deferred with standalone EQY. Wider mutation and physical fault qualification remain pending.
   Comment: The seven Icarus invalid-parameter cases require successful compilation and a named fatal at time zero with a nonzero run exit. They are classified as expected_assertion_failure, not compiler elaboration failures. The issue's before-execution wording amendment is proposed in docs/release-scope.md.
 - [x] Four-state cases use a pinned four-state simulator and prove both X/Z
   stimulus reachability and monitor detection.
@@ -131,7 +132,7 @@ PrimeTime, PrimePower, coverage closure, and site qualification remain open.
 - [ ] Design Compiler completes with the intended libraries and operating corner.
   Comment: NOT_RUN/BLOCKED: technology, libraries, corners and synchronizer/storage mapping are not selected.
 - [ ] Area, QoR, and synthesis timing reports are reviewed.
-  Comment: Generic Yosys reports are available. ASIC area, timing, stage preservation and storage suitability remain open.
+  Comment: Historical generic Yosys reports are available; standalone synthesis is now a unit-level policy SKIP. ASIC area, timing, stage preservation and storage suitability remain open.
 - [ ] PrimeTime reports no release-blocking setup or hold violation.
   Comment: NOT_RUN/BLOCKED: mapped timing and Gray skew/delay reports are mandatory, not waived.
 - [ ] Unconstrained paths and constraint coverage are reviewed.
@@ -183,6 +184,7 @@ PrimeTime, PrimePower, coverage closure, and site qualification remain open.
 
 - [x] Native `make clean open-source` passes.
   Comment: A root `make clean` followed by `make all-profiles PROFILE_JOBS=2 PROFILE_TARGET=open-source` passes after common primitive reuse, including a freshly regenerated nominal profile.
+  Comment: A fresh five-profile native sweep also passes with the current standalone synthesis/equivalence SKIP policy and isolated reports/unit-flow-policy and work/unit-flow-policy roots. All enabled flows and simulation evidence checks pass. See docs/portable-validation.md for commands and scope.
 - [x] Every representative profile passes with bounded concurrency and isolated
   reports, work products, formal artifacts, and netlists.
   Comment: All five fresh native and container portable sweeps pass with PROFILE_JOBS=2 after the simulation-gap additions. Native and container transaction/scenario counts agree. Container evidence uses separate reports/container and work/container roots. Focused assertion controls use additional isolated assertion_controls roots and their complete baseline also includes the new scenarios.
@@ -192,7 +194,7 @@ PrimeTime, PrimePower, coverage closure, and site qualification remain open.
 - [x] The pinned Docker image builds and its portable gate passes.
   Comment: Image sha256:2c542500db1bc36b54fdfa8a754ace0cc22695c626940e1a9e1bd9a160e75338 builds and passes all five profiles.
 - [ ] GitHub Actions passes using the recorded gitlink revision.
-  Comment: NOT_RUN: actionlint passes. The workflow includes the original five portable profiles, a separate nine-target formal matrix, native/container formal evidence checks and eight artifact failure controls. Local native portable and native/container formal commands pass, but this uncommitted branch has not been pushed or executed in hosted CI.
+  Comment: Revision 6fbba188b22ebce249196234f33f61a767de3d85 passes hosted push run 37730251982. PR run 37730334702 passes all five native profiles, all nine native formal jobs and the portable container sweep, but its delayed_reset_depth4 container proof times out at the original 600-second limit. The revised 1200-second proof budget, serialized container formal sweep and standalone synthesis/equivalence SKIP policy still require hosted confirmation, so this item remains open. See docs/portable-validation.md for the separate run outcomes. No timeout is waived or converted to PASS.
 - [ ] Commercial gates pass in the authorized local or self-hosted environment
   when they belong to release scope. Otherwise their policy is an approved
   `SKIP`.

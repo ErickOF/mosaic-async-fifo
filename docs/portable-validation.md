@@ -510,6 +510,93 @@ and ASIC gates remain unchanged, with no fabricated PASS artifact. Manifest
 validation, selected-profile flow configuration, actionlint and
 `git diff --check` pass. No commit, push or hosted GitHub Actions run was made.
 
+## Hosted CI timeout investigation, 2026-10-07
+
+Both hosted runs use revision `6fbba188b22ebce249196234f33f61a767de3d85`:
+
+- [Push run 37730251982](https://github.com/ErickOF/mosaic-async-fifo/actions/runs/37730251982)
+  passes, including every native portable/formal job and the full container job.
+- [PR run 37730334702](https://github.com/ErickOF/mosaic-async-fifo/actions/runs/37730334702)
+  passes all five native portable jobs, all nine native formal jobs, the portable
+  container sweep and assertion controls. Eight container formal profiles pass.
+  The `delayed_reset_depth4` container proof reaches the 600-second timeout
+  before ABC PDR returns a result. Its cover task is not run afterward, and the
+  container job correctly fails. No assertion counterexample is reported.
+
+The PR's retained container artifact is `11530816740`. Its eight successful
+formal profiles pass the current source/parameter/proof/witness checker.
+The failed profile remains `TIMEOUT` in SymbiYosys and `FAIL` at the combined
+flow. The checker rejects that real artifact as `Combined flow did not pass`.
+Source hashes match the current RTL. Local downloaded artifacts are isolated
+at `/tmp/mosaic-pr2-failed-container-artifacts/`, and the full job log is
+`/tmp/mosaic-pr2-container-job.log`.
+
+The fix increases only the proof wall-clock budget to 1200 seconds. Complete
+ABC PDR, assertions, assumptions, all nine profiles and the 128-step cover bound
+are unchanged. Cover keeps its 600-second budget. Native formal jobs allow
+40 minutes and the combined container job allows 75 minutes. Only the
+formal-only container sweep switches to `PROFILE_JOBS=1` to avoid contention
+between profiles on the same runner. Portable execution retains two concurrent
+profiles. Timeouts, UNKNOWN and unreached covers still fail closed.
+
+A fresh full nine-profile formal sweep passes in the pinned container with a
+two-CPU quota, sequential formal profiles and isolated
+`reports/ci-formal-budget/` and `work/ci-formal-budget/` roots. The image remains
+`sha256:2c542500db1bc36b54fdfa8a754ace0cc22695c626940e1a9e1bd9a160e75338`.
+Its log is `/tmp/mosaic-ci-formal-budget-regression.log`. Every profile passes
+complete proof and all selected covers. The source/parameter/proof/witness
+checker passes all nine results, with witness counts and steps matching the
+earlier formal scope table. All eight disposable evidence controls pass again.
+The previously timed-out profile completes proof in 435 seconds and cover in
+166 seconds, reaching all 138 witnesses. The actual failed PR artifact is still
+rejected, not reclassified. Actionlint and `git diff --check` also pass.
+
+The failed PR run is not relabeled as passing. Local validation preceded
+commit creation, and the revised configuration has not been pushed or tested
+in hosted CI. The checklist's hosted workflow item remains open despite the
+original passing push run. ASIC qualification and specification approvals
+remain separate open gates.
+
+## Standalone flow policy, 2026-10-08
+
+The owner has disabled `yosys_synthesis` and `eqy_equivalence` at the FIFO
+unit level. Both flags are disabled in `config/flows.mk`, and both flow IDs
+are excluded from all five production profile lists. No parameter tuples,
+RTL, shared adapters or dependency revisions were changed. Retained synthesis
+and EQY collateral remains available for future re-enablement.
+
+Both manifests validate, the portable matrix is deterministic, and resolved
+flow policy validates for all five portable and nine formal-only targets.
+All nine formal-only targets still require `symbiyosys_formal`. The original
+minimum profile passes complete proof and all 71 cover witnesses, with the
+latest witness at step 43. Its source/parameter/proof/witness check passes.
+Yosys remains necessary for formal model preparation, independently of the
+disabled standalone synthesis flow.
+
+A fresh five-profile native `open-source` sweep passes with `PROFILE_JOBS=2`.
+Every profile records `PASS` for its enabled flows and `SKIP` for both disabled
+standalone flows. SystemVerilog and PyUVM evidence integrity checks pass for
+all five profiles, and all eight cross-artifact failure controls pass again.
+The negative and four-state campaigns pass where enabled. Reports and work
+products are isolated under `reports/unit-flow-policy/` and
+`work/unit-flow-policy/`; the run log is
+`/tmp/mosaic-unit-flow-policy-regression.log`. Native cross evidence is valid,
+but quantitative closure remains open. Actionlint and `git diff --check` pass.
+
+Native explicit targets and a five-profile Docker `open-equivalence` sweep
+return policy `SKIP` with both `YOSYS_CMD` and `EQY_CMD` set to nonexistent
+paths. The retained EQY prerequisite also skips synthesis. All ten container
+statuses are `SKIP`, with no synthesis or EQY adapter logs generated.
+This focused container check does not claim a new full container regression.
+Its evidence is isolated under `reports/unit-flow-policy-container/` and
+`work/unit-flow-policy-container/` using the existing pinned portable image.
+
+Earlier synthesis/equivalence PASS snapshots remain historical. Their results
+are not current-policy PASS claims. These skips do not waive technology-mapped
+storage/synchronizer, CDC/RDC, timing, power, MTBF or ASIC release obligations.
+These results were collected before commit creation. The updated policy has
+not been pushed or tested in hosted GitHub Actions.
+
 ## Remaining evidence
 
 See the original-format [release checklist](release-checklist.md) and

@@ -109,8 +109,10 @@ the delayed profile's reachability task.
 The existing mosaic-flow SymbiYosys adapter is reused without modification.
 ABC PDR performs a complete safety proof; its `depth 48` setting is not a
 48-step bounded PASS. Cover mode is separate, uses SMTBMC/Bitwuzla and a bound
-of 128 global steps. Each task has a 600-second timeout. A timeout, UNKNOWN,
-unreached cover, missing tool or missing trace fails the profile, not a waiver.
+of 128 global steps. Proof has a 1200-second timeout and cover mode retains its
+600-second timeout. These are wall-clock resource budgets, not proof bounds.
+A timeout, UNKNOWN, unreached cover, missing tool or missing trace fails the
+profile, not a waiver.
 
 The shared observer covers legal address/activity/stall/level/threshold/phase
 targets and every Gray/domain-up stage transition. Checked wrap invariants,
@@ -160,3 +162,13 @@ python3 .github/scripts/test-formal-evidence.py --profile delayed_reset_depth2 \
 GitHub Actions has a separate, bounded-concurrency formal matrix and retains
 proof sources, property databases and cover traces as artifacts. Hosted CI
 execution is distinct from local native/container evidence.
+
+Native formal jobs keep two concurrent, separately hosted profiles and allow
+40 minutes per job for tool setup, the 20-minute proof budget, the 10-minute
+cover budget and evidence retention. The container job allows 75 minutes for
+the portable sweep, assertion controls and the formal sweep. Portable profiles
+still run with `PROFILE_JOBS=2`, but the formal-only container sweep uses
+`PROFILE_JOBS=1` so its PDR and SMT workloads do not compete with another formal
+profile on the same runner. Every formal profile and evidence control remains
+required. This scheduling/resource change does not alter the model, assumptions,
+assertions, qualified engine or cover bound, and does not turn timeout into PASS.
